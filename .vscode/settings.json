@@ -1,0 +1,23 @@
+{
+  "java.configuration.runtimes": [
+    {
+      "name": "JavaSE-17",
+      "path": "/opt/homebrew/Cellar/openjdk@17/17.0.17/libexec/openjdk.jdk/Contents/Home",
+      "default": true
+    }
+  ],
+  "java.jdt.ls.java.home": "/opt/homebrew/Cellar/openjdk@17/17.0.17/libexec/openjdk.jdk/Contents/Home",
+  "java.completion.enabled": true,
+  "java.completion.importOrder": [
+    "java",
+    "javax",
+    "org",
+    "com"
+  ],
+  "java.saveActions.organizeImports": true,
+  "editor.formatOnSave": true,
+  "java.format.enabled": true,
+  "java.autobuild.enabled": true,
+  "java.import.maven.enabled": true,
+  "java.compile.nullAnalysis.mode": "automatic"
+}

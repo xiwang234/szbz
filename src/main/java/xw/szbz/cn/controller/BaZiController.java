@@ -6,6 +6,10 @@ import org.springframework.web.bind.annotation.*;
 import xw.szbz.cn.model.BaZiRequest;
 import xw.szbz.cn.model.BaZiResult;
 import xw.szbz.cn.service.BaZiService;
+import xw.szbz.cn.service.GeminiService;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 四柱八字API控制器
@@ -15,10 +19,12 @@ import xw.szbz.cn.service.BaZiService;
 public class BaZiController {
 
     private final BaZiService baZiService;
+    private final GeminiService geminiService;
 
     @Autowired
-    public BaZiController(BaZiService baZiService) {
+    public BaZiController(BaZiService baZiService, GeminiService geminiService) {
         this.baZiService = baZiService;
+        this.geminiService = geminiService;
     }
 
     /**
@@ -73,5 +79,50 @@ public class BaZiController {
         if (request.getHour() < 0 || request.getHour() > 23) {
             throw new IllegalArgumentException("小时必须在0-23之间");
         }
+    }
+
+    /**
+     * 生成八字并使用 Gemini AI 进行分析
+     *
+     * @param request 请求参数（性别、出生年月日时）
+     * @return 包含八字结果和 AI 分析的响应
+     */
+    @PostMapping("/analyze")
+    public ResponseEntity<Map<String, Object>> analyzeBaZiWithAI(@RequestBody BaZiRequest request) {
+        validateRequest(request);
+
+        // 1. 计算八字
+        BaZiResult baZiResult = baZiService.calculate(request);
+
+        // 2. 使用 Gemini AI 分析
+        String aiAnalysis = geminiService.analyzeBaZi(baZiResult);
+
+        // 3. 构建返回结果
+        Map<String, Object> response = new HashMap<>();
+        response.put("baziResult", baZiResult);
+        response.put("aiAnalysis", aiAnalysis);
+
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * GET方式生成八字并使用 Gemini AI 进行分析
+     *
+     * @param gender 性别
+     * @param year   出生年
+     * @param month  出生月
+     * @param day    出生日
+     * @param hour   出生时
+     * @return 包含八字结果和 AI 分析的响应
+     */
+    @GetMapping("/analyze")
+    public ResponseEntity<Map<String, Object>> analyzeBaZiWithAIGet(
+            @RequestParam String gender,
+            @RequestParam int year,
+            @RequestParam int month,
+            @RequestParam int day,
+            @RequestParam int hour) {
+        BaZiRequest request = new BaZiRequest(gender, year, month, day, hour);
+        return analyzeBaZiWithAI(request);
     }
 }

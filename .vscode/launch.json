@@ -1,0 +1,39 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Debug GeminiAnalysisExample",
+      "request": "launch",
+      "mainClass": "xw.szbz.cn.GeminiAnalysisExample",
+      "projectName": "szbzApi",
+      "env": {
+        "GEMINI_API_KEY": "AIzaSyA9aKhNqwaYN0bsDqzqi9cmHL84WpM-xX8"
+      }
+    },
+    {
+      "type": "java",
+      "name": "Launch SzbzApiApplication",
+      "request": "launch",
+      "mainClass": "xw.szbz.cn.SzbzApiApplication",
+      "projectName": "szbzApi",
+      "env": {
+        "GEMINI_API_KEY": "${env:GEMINI_API_KEY}"
+      }
+    },
+    {
+      "type": "java",
+      "name": "Launch Current File",
+      "request": "launch",
+      "mainClass": "${file}"
+    },
+    {
+      "type": "java",
+      "name": "Debug Tests",
+      "request": "launch",
+      "mainClass": "",
+      "projectName": "szbzApi",
+      "preLaunchTask": "test"
+    }
+  ]
+}

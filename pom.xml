@@ -39,6 +39,20 @@
             <artifactId>google-genai</artifactId>
             <version>1.28.0</version>
         </dependency>
+
+        <!-- Alibaba DashScope SDK for Qwen -->
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>dashscope-sdk-java</artifactId>
+            <version>2.21.9</version>
+        </dependency>
+
+        <!-- OpenAI Java SDK for async calls -->
+        <dependency>
+            <groupId>com.openai</groupId>
+            <artifactId>openai-java</artifactId>
+            <version>4.8.0</version>
+        </dependency>
     </dependencies>
 
     <build>

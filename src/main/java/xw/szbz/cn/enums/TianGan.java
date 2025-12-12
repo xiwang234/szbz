@@ -40,4 +40,13 @@ public enum TianGan {
         }
         throw new IllegalArgumentException("Invalid TianGan index: " + index);
     }
+
+    public static TianGan fromName(String name) {
+        for (TianGan tg : values()) {
+            if (tg.name.equals(name)) {
+                return tg;
+            }
+        }
+        throw new IllegalArgumentException("Invalid TianGan name: " + name);
+    }
 }

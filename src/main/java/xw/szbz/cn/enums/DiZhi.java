@@ -43,6 +43,15 @@ public enum DiZhi {
         throw new IllegalArgumentException("Invalid DiZhi index: " + index);
     }
 
+    public static DiZhi fromName(String name) {
+        for (DiZhi dz : values()) {
+            if (dz.name.equals(name)) {
+                return dz;
+            }
+        }
+        throw new IllegalArgumentException("Invalid DiZhi name: " + name);
+    }
+
     /**
      * 根据时辰获取地支
      * 子时：23:00-01:00

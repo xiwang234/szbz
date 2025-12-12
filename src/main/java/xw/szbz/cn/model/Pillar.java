@@ -42,4 +42,13 @@ public class Pillar {
     public void setFullName(String fullName) {
         this.fullName = fullName;
     }
+
+    @Override
+    public String toString() {
+        return "{" +
+                "\"tianGan\":\"" + tianGan + "\"," +
+                "\"diZhi\":\"" + diZhi + "\"," +
+                "\"fullName\":\"" + fullName + "\"" +
+                "}";
+    }
 }

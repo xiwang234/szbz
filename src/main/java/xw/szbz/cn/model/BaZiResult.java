@@ -1,5 +1,7 @@
 package xw.szbz.cn.model;
 
+import java.util.List;
+
 /**
  * 四柱八字返回结果
  */
@@ -11,6 +13,11 @@ public class BaZiResult {
     private Pillar hourPillar;
     private String fullBaZi;
     private BirthInfo birthInfo;
+
+    // 新增属性
+    private BasicInfo basicInfo;                // 基本信息（性别、年、月、日、时）
+    private List<DaYunLiuNian> daYunStringList; // 大运及其对应流年列表（覆盖到当前年份）
+    private List<DaYunLiuNian> daYunALLStringList; // 完整的10个大运及其对应流年列表
 
     public BaZiResult() {
     }
@@ -69,6 +76,67 @@ public class BaZiResult {
 
     public void setBirthInfo(BirthInfo birthInfo) {
         this.birthInfo = birthInfo;
+    }
+
+    public BasicInfo getBasicInfo() {
+        return basicInfo;
+    }
+
+    public void setBasicInfo(BasicInfo basicInfo) {
+        this.basicInfo = basicInfo;
+    }
+
+    public List<DaYunLiuNian> getDaYunStringList() {
+        return daYunStringList;
+    }
+
+    public void setDaYunStringList(List<DaYunLiuNian> daYunStringList) {
+        this.daYunStringList = daYunStringList;
+    }
+
+    public List<DaYunLiuNian> getDaYunALLStringList() {
+        return daYunALLStringList;
+    }
+
+    public void setDaYunALLStringList(List<DaYunLiuNian> daYunALLStringList) {
+        this.daYunALLStringList = daYunALLStringList;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{");
+        sb.append("\"gender\":\"").append(gender).append("\",");
+        sb.append("\"yearPillar\":").append(yearPillar != null ? yearPillar.toString() : "null").append(",");
+        sb.append("\"monthPillar\":").append(monthPillar != null ? monthPillar.toString() : "null").append(",");
+        sb.append("\"dayPillar\":").append(dayPillar != null ? dayPillar.toString() : "null").append(",");
+        sb.append("\"hourPillar\":").append(hourPillar != null ? hourPillar.toString() : "null").append(",");
+        sb.append("\"fullBaZi\":\"").append(fullBaZi).append("\",");
+        sb.append("\"birthInfo\":").append(birthInfo != null ? birthInfo.toString() : "null").append(",");
+        sb.append("\"basicInfo\":").append(basicInfo != null ? basicInfo.toString() : "null").append(",");
+
+        // 大运及其对应流年列表（覆盖到当前年份）
+        sb.append("\"daYunStringList\":[");
+        if (daYunStringList != null && !daYunStringList.isEmpty()) {
+            for (int i = 0; i < daYunStringList.size(); i++) {
+                if (i > 0) sb.append(",");
+                sb.append(daYunStringList.get(i).toString());
+            }
+        }
+        sb.append("],");
+
+        // 完整的10个大运及其对应流年列表
+        sb.append("\"daYunALLStringList\":[");
+        if (daYunALLStringList != null && !daYunALLStringList.isEmpty()) {
+            for (int i = 0; i < daYunALLStringList.size(); i++) {
+                if (i > 0) sb.append(",");
+                sb.append(daYunALLStringList.get(i).toString());
+            }
+        }
+        sb.append("]");
+
+        sb.append("}");
+        return sb.toString();
     }
 
     /**
@@ -140,6 +208,19 @@ public class BaZiResult {
 
         public void setDayPillarDate(String dayPillarDate) {
             this.dayPillarDate = dayPillarDate;
+        }
+
+        @Override
+        public String toString() {
+            return "{" +
+                    "\"year\":" + year + "," +
+                    "\"month\":" + month + "," +
+                    "\"day\":" + day + "," +
+                    "\"hour\":" + hour + "," +
+                    "\"shiChen\":\"" + shiChen + "\"," +
+                    "\"adjusted\":" + adjusted + "," +
+                    "\"dayPillarDate\":\"" + dayPillarDate + "\"" +
+                    "}";
         }
     }
 }

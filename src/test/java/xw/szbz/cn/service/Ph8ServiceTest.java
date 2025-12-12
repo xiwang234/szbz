@@ -15,18 +15,18 @@ import xw.szbz.cn.model.BaZiRequest;
 import xw.szbz.cn.model.BaZiResult;
 
 /**
- * GeminiService 单元测试
- * 注意：这些测试需要有效的 Gemini API Key 才能运行
+ * Ph8Service 单元测试
+ * 注意：这些测试需要有效的 Ph8 API Key 才能运行
  */
 @SpringBootTest
 @TestPropertySource(properties = {
-        "gemini.api.key=${GEMINI_API_KEY:}",
-        "gemini.model=gemini-2.0-flash-exp"
+        "ph8.api.key=sk-37abe08dab1f43059ab9ed1988a7b9e9",
+        "ph8.model=gemini-3-pro-preview:share"
 })
-class GeminiServiceTest {
+class Ph8ServiceTest {
 
     @Autowired
-    private GeminiService geminiService;
+    private Ph8Service ph8Service;
 
     @Autowired
     private BaZiService baZiService;
@@ -35,9 +35,9 @@ class GeminiServiceTest {
     @DisplayName("测试分析八字 - 完整流程")
     void testAnalyzeBaZi_FullFlow() {
         // 检查是否配置了 API Key
-        String apiKey = "cr_eb5f1a47c692841a0f5408e48514c2b8d1e98f8024b6d6af14ffd60767195bf2";
+        String apiKey = "sk-37abe08dab1f43059ab9ed1988a7b9e9";
         if (apiKey == null || apiKey.isEmpty()) {
-            System.out.println("跳过测试：未配置 GEMINI_API_KEY 环境变量");
+            System.out.println("跳过测试：未配置 PH8_API_KEY 环境变量");
             return;
         }
 
@@ -45,8 +45,8 @@ class GeminiServiceTest {
         BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23);
         BaZiResult baZiResult = baZiService.calculate(request);
 
-        // 2. 使用 Gemini 分析
-        String analysis = geminiService.analyzeBaZi(baZiResult);
+        // 2. 使用 Ph8 分析
+        String analysis = ph8Service.analyzeBaZi(baZiResult);
 
         // 3. 验证结果
         assertNotNull(analysis, "分析结果不应为空");
@@ -54,7 +54,7 @@ class GeminiServiceTest {
         assertTrue(analysis.length() > 100, "分析结果应该包含足够的内容");
 
         // 输出结果以便查看
-        System.out.println("========== Gemini AI 八字分析结果 ==========");
+        System.out.println("========== Ph8 AI 八字分析结果 ==========");
         System.out.println("八字：" + baZiResult.getFullBaZi());
         System.out.println("\n分析结果：");
         System.out.println(analysis);
@@ -65,9 +65,9 @@ class GeminiServiceTest {
     @DisplayName("测试分析八字 - 女性八字")
     void testAnalyzeBaZi_Female() {
         // 检查是否配置了 API Key
-        String apiKey = System.getenv("GEMINI_API_KEY");
+        String apiKey = System.getenv("PH8_API_KEY");
         if (apiKey == null || apiKey.isEmpty()) {
-            System.out.println("跳过测试：未配置 GEMINI_API_KEY 环境变量");
+            System.out.println("跳过测试：未配置 PH8_API_KEY 环境变量");
             return;
         }
 
@@ -75,14 +75,14 @@ class GeminiServiceTest {
         BaZiRequest request = new BaZiRequest("女", 1989, 11, 23, 20);
         BaZiResult baZiResult = baZiService.calculate(request);
 
-        // 2. 使用 Gemini 分析
-        String analysis = geminiService.analyzeBaZi(baZiResult);
+        // 2. 使用 Ph8 分析
+        String analysis = ph8Service.analyzeBaZi(baZiResult);
 
         // 3. 验证结果
         assertNotNull(analysis);
         assertFalse(analysis.isEmpty());
 
-        System.out.println("========== Gemini AI 八字分析结果（女性）==========");
+        System.out.println("========== Ph8 AI 八字分析结果（女性）==========");
         System.out.println("八字：" + baZiResult.getFullBaZi());
         System.out.println("\n分析结果：");
         System.out.println(analysis);
@@ -93,9 +93,9 @@ class GeminiServiceTest {
     @DisplayName("测试 API Key 未配置的情况")
     void testAnalyzeBaZi_NoApiKey() {
         // 如果环境变量中有 API Key，跳过此测试
-        String apiKey = System.getenv("GEMINI_API_KEY");
+        String apiKey = System.getenv("PH8_API_KEY");
         if (apiKey != null && !apiKey.isEmpty()) {
-            System.out.println("跳过测试：已配置 GEMINI_API_KEY");
+            System.out.println("跳过测试：已配置 PH8_API_KEY");
             return;
         }
 
@@ -104,7 +104,35 @@ class GeminiServiceTest {
 
         // 应该抛出 IllegalStateException
         assertThrows(IllegalStateException.class, () -> {
-            geminiService.analyzeBaZi(baZiResult);
+            ph8Service.analyzeBaZi(baZiResult);
         });
+    }
+
+    @Test
+    @DisplayName("测试分析八字 - 子时跨日场景")
+    void testAnalyzeBaZi_MidnightCase() {
+        // 检查是否配置了 API Key
+        String apiKey = System.getenv("PH8_API_KEY");
+        if (apiKey == null || apiKey.isEmpty()) {
+            System.out.println("跳过测试：未配置 PH8_API_KEY 环境变量");
+            return;
+        }
+
+        // 测试子时（23点）的特殊情况
+        BaZiRequest request = new BaZiRequest("男", 2025, 11, 24, 23);
+        BaZiResult baZiResult = baZiService.calculate(request);
+
+        // 使用 Ph8 分析
+        String analysis = ph8Service.analyzeBaZi(baZiResult);
+
+        // 验证结果
+        assertNotNull(analysis);
+        assertFalse(analysis.isEmpty());
+
+        System.out.println("========== Ph8 AI 八字分析结果（子时跨日）==========");
+        System.out.println("八字：" + baZiResult.getFullBaZi());
+        System.out.println("\n分析结果：");
+        System.out.println(analysis);
+        System.out.println("==========================================");
     }
 }

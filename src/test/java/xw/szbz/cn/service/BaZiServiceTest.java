@@ -1,13 +1,16 @@
 package xw.szbz.cn.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
 import xw.szbz.cn.model.BaZiRequest;
 import xw.szbz.cn.model.BaZiResult;
 import xw.szbz.cn.model.Pillar;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * BaZiService 单元测试
@@ -247,7 +250,10 @@ class BaZiServiceTest {
     void testCalculate_19841123_2325() {
         BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23);
         BaZiResult result = baZiService.calculate(request);
-
+        System.out.println("#############" + result.getFullBaZi());
+        // System.out.println("#############" + result.getExtendedInfo());
+        System.out.println("#############" + result.getDaYunStringList());
+        // System.out.println("#############" + result.getBasicInfo());
         // 验证四柱
         assertEquals("甲子", result.getYearPillar().getFullName());
         assertEquals("乙亥", result.getMonthPillar().getFullName());
@@ -350,5 +356,26 @@ class BaZiServiceTest {
         BaZiRequest request = new BaZiRequest("female", 1989, 11, 23, 20);
         BaZiResult result = baZiService.calculate(request);
         assertEquals("女", result.getGender());
+    }
+
+    @Test
+    @DisplayName("测试daYunALLStringList - 验证包含10个大运")
+    void testCalculate_DaYunALLStringList() {
+        BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23);
+        BaZiResult result = baZiService.calculate(request);
+
+        // 验证 daYunALLStringList 不为空
+        assertFalse(result.getDaYunALLStringList() == null);
+
+        // 验证包含10个大运
+        assertEquals(10, result.getDaYunALLStringList().size());
+
+        // 验证每个大运都包含对应的流年列表
+        assertTrue(result.getDaYunALLStringList().get(0).getLiuNianList().size() > 0);
+
+        // 输出验证
+        System.out.println("daYunALLStringList size: " + result.getDaYunALLStringList().size());
+        System.out.println("First DaYun: " + result.getDaYunALLStringList().get(0).getDaYunFullName());
+        System.out.println("Last DaYun: " + result.getDaYunALLStringList().get(9).getDaYunFullName());
     }
 }

@@ -4,6 +4,7 @@ package xw.szbz.cn.model;
  * 四柱八字请求参数
  */
 public class BaZiRequest {
+    private String openId;
     private String gender;
     private int year;
     private int month;
@@ -19,6 +20,14 @@ public class BaZiRequest {
         this.month = month;
         this.day = day;
         this.hour = hour;
+    }
+
+    public String getOpenId() {
+        return openId;
+    }
+
+    public void setOpenId(String openId) {
+        this.openId = openId;
     }
 
     public String getGender() {

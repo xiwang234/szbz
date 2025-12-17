@@ -1,5 +1,6 @@
 package xw.szbz.cn;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import xw.szbz.cn.model.BaZiRequest;
 import xw.szbz.cn.model.BaZiResult;
 import xw.szbz.cn.service.BaZiService;
@@ -40,8 +41,18 @@ public class GeminiAnalysisExample {
         try {
             System.out.println("========== Gemini AI 分析 ==========");
             System.out.println("正在调用 Gemini AI 进行分析...");
-            String analysis = geminiService.analyzeBaZi(baZiResult);
-            System.out.println(analysis);
+            Object analysis = geminiService.analyzeBaZi(baZiResult);
+            
+            // 美化输出JSON结果
+            if (analysis instanceof String) {
+                // 如果是字符串，直接输出
+                System.out.println(analysis);
+            } else {
+                // 如果是JSON对象，格式化输出
+                ObjectMapper mapper = new ObjectMapper();
+                String prettyJson = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(analysis);
+                System.out.println(prettyJson);
+            }
             System.out.println("====================================");
         } catch (IllegalStateException e) {
             System.err.println("错误: " + e.getMessage());

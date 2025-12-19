@@ -1,22 +1,32 @@
 package xw.szbz.cn.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import jakarta.servlet.http.HttpServletRequest;
 import xw.szbz.cn.model.ApiResponse;
 import xw.szbz.cn.model.BaZiAnalysisResponse;
 import xw.szbz.cn.model.BaZiRequest;
 import xw.szbz.cn.model.BaZiResult;
+import xw.szbz.cn.model.BusinessLog;
+import xw.szbz.cn.service.BaZiCacheService;
 import xw.szbz.cn.service.BaZiService;
+import xw.szbz.cn.service.BusinessLogService;
 import xw.szbz.cn.service.GeminiService;
+import xw.szbz.cn.service.WeChatService;
 import xw.szbz.cn.util.JwtUtil;
 import xw.szbz.cn.util.SignatureUtil;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * 四柱八字API控制器
@@ -27,62 +37,157 @@ public class BaZiController {
 
     private final BaZiService baZiService;
     private final GeminiService geminiService;
+    private final WeChatService weChatService;
     private final JwtUtil jwtUtil;
     private final SignatureUtil signatureUtil;
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final BaZiCacheService cacheService;
+    private final BusinessLogService businessLogService;
     private final ObjectMapper objectMapper;
 
     @Autowired
     public BaZiController(BaZiService baZiService, 
                           GeminiService geminiService,
+                          WeChatService weChatService,
                           JwtUtil jwtUtil,
                           SignatureUtil signatureUtil,
-                          RedisTemplate<String, Object> redisTemplate,
+                          BaZiCacheService cacheService,
+                          BusinessLogService businessLogService,
                           ObjectMapper objectMapper) {
         this.baZiService = baZiService;
         this.geminiService = geminiService;
+        this.weChatService = weChatService;
         this.jwtUtil = jwtUtil;
         this.signatureUtil = signatureUtil;
-        this.redisTemplate = redisTemplate;
+        this.cacheService = cacheService;
+        this.businessLogService = businessLogService;
         this.objectMapper = objectMapper;
     }
 
     /**
-     * 生成四柱八字
+     * 生成八字并使用 Gemini AI 进行分析
+     * 增强功能：微信登录 + JWT + Caffeine缓存 + 签名验证 + 业务日志
      *
-     * @param request 请求参数（性别、出生年月日时）
-     * @return 四柱八字结果
+     * @param request   请求参数（code、性别、出生年月日时）
+     * @param timestamp 时间戳（Header）
+     * @param sign      签名（Header）
+     * @param httpRequest HTTP请求对象
+     * @return 包含AI分析和JWT Token的响应
      */
-    @PostMapping("/generate")
-    public ResponseEntity<BaZiResult> generateBaZi(@RequestBody BaZiRequest request) {
-        validateRequest(request);
-        BaZiResult result = baZiService.calculate(request);
-        return ResponseEntity.ok(result);
+    @PostMapping("/analyze")
+    public ResponseEntity<ApiResponse<BaZiAnalysisResponse>> analyzeBaZiWithAI(
+            @RequestBody BaZiRequest request,
+            @RequestHeader(value = "X-Timestamp", required = false) Long timestamp,
+            @RequestHeader(value = "X-Sign", required = false) String sign,
+            HttpServletRequest httpRequest) {
+
+        long startTime = System.currentTimeMillis();
+        BusinessLog businessLog = new BusinessLog();
+        String openId = null;
+        
+        try {
+            // 记录请求信息
+            businessLog.setRequestIp(getClientIp(httpRequest));
+            businessLog.setUserAgent(httpRequest.getHeader("User-Agent"));
+            businessLog.setGender(request.getGender());
+            businessLog.setYear(request.getYear());
+            businessLog.setMonth(request.getMonth());
+            businessLog.setDay(request.getDay());
+            businessLog.setHour(request.getHour());
+
+            // ===== Step 1: 验证微信小程序登录凭证 code =====
+            if (request.getCode() == null || request.getCode().isEmpty()) {
+                return buildErrorResponse(businessLog, startTime, 400, "登录凭证code不能为空");
+            }
+
+            // ===== Step 2: 调用微信官方接口，将 code 换取 openId =====
+            try {
+                openId = weChatService.getOpenId(request.getCode());
+                businessLog.setOpenId(openId);
+                System.out.println("微信登录成功，OpenId: " + openId);
+            } catch (Exception e) {
+                System.err.println("微信登录失败: " + e.getMessage());
+                return buildErrorResponse(businessLog, startTime, 401, "微信登录失败: " + e.getMessage());
+            }
+
+            // ===== Step 3: 验证时间戳（超过2秒返回错误） =====
+            if (timestamp == null) {
+                return buildErrorResponse(businessLog, startTime, 400, "缺少时间戳参数");
+            }
+            if (!signatureUtil.validateTimestamp(timestamp)) {
+                return buildErrorResponse(businessLog, startTime, 400, "请求已过期，时间戳超过2秒");
+            }
+
+            // ===== Step 4: 验证签名（防止参数被篡改） =====
+            if (sign == null || sign.isEmpty()) {
+                return buildErrorResponse(businessLog, startTime, 400, "缺少签名参数");
+            }
+            Map<String, Object> params = signatureUtil.objectToMap(request);
+            if (!signatureUtil.verifySignature(params, timestamp, sign)) {
+                return buildErrorResponse(businessLog, startTime, 400, "签名验证失败，参数可能被篡改");
+            }
+
+            // 验证基本参数
+            validateRequest(request);
+
+            // ===== Step 5: 检查Caffeine缓存（使用 openId 作为Key） =====
+            BaZiAnalysisResponse cachedResponse = cacheService.get(openId);
+            
+            if (cachedResponse != null) {
+                // 缓存命中，直接返回
+                System.out.println("缓存命中: " + openId);
+                businessLog.setCacheHit(true);
+                businessLog.setAiAnalysis(objectMapper.writeValueAsString(cachedResponse.getAiAnalysis()));
+                
+                // 生成JWT Token
+                String token = jwtUtil.generateToken(openId);
+                
+                return buildSuccessResponse(businessLog, startTime, cachedResponse, token);
+            }
+
+            businessLog.setCacheHit(false);
+
+            // ===== Step 6: 计算八字（包含大运、流年） =====
+            BaZiResult baZiResult = baZiService.calculate(request);
+            businessLog.setBaziResult(objectMapper.writeValueAsString(baZiResult));
+
+            // ===== Step 7: 使用 Gemini AI 分析（返回JSON格式） =====
+            Object aiAnalysis = geminiService.analyzeBaZi(baZiResult);
+            businessLog.setAiAnalysis(objectMapper.writeValueAsString(aiAnalysis));
+
+            // ===== Step 8: 构建响应数据（仅包含AI分析结果） =====
+            BaZiAnalysisResponse responseData = new BaZiAnalysisResponse(aiAnalysis);
+
+            // ===== Step 9: 将结果存入Caffeine缓存，过期时间3天 =====
+            cacheService.put(openId, responseData);
+
+            // ===== Step 10: 生成JWT Token =====
+            String token = jwtUtil.generateToken(openId);
+
+            // ===== Step 11: 返回JSON格式，包含Token =====
+            return buildSuccessResponse(businessLog, startTime, responseData, token);
+
+        } catch (IllegalArgumentException e) {
+            return buildErrorResponse(businessLog, startTime, 400, e.getMessage());
+        } catch (Exception e) {
+            System.err.println("服务器错误: " + e.getMessage());
+            e.printStackTrace();
+            return buildErrorResponse(businessLog, startTime, 500, "服务器内部错误: " + e.getMessage());
+        }
     }
+
+
 
     /**
-     * GET方式生成四柱八字
-     *
-     * @param gender 性别
-     * @param year   出生年
-     * @param month  出生月
-     * @param day    出生日
-     * @param hour   出生时
-     * @return 四柱八字结果
+     * 获取缓存统计信息
      */
-    @GetMapping("/generate")
-    public ResponseEntity<BaZiResult> generateBaZiGet(
-            @RequestParam String gender,
-            @RequestParam int year,
-            @RequestParam int month,
-            @RequestParam int day,
-            @RequestParam int hour) {
-        BaZiRequest request = new BaZiRequest(gender, year, month, day, hour);
-        validateRequest(request);
-        BaZiResult result = baZiService.calculate(request);
-        return ResponseEntity.ok(result);
+    @GetMapping("/cache/stats")
+    public ResponseEntity<Map<String, Object>> getCacheStats() {
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("cacheStats", cacheService.getCacheStats());
+        stats.put("logDirectory", businessLogService.getLogDirectoryPath());
+        return ResponseEntity.ok(stats);
     }
-
+    
     private void validateRequest(BaZiRequest request) {
         if (request.getGender() == null || request.getGender().isEmpty()) {
             throw new IllegalArgumentException("性别不能为空");
@@ -102,132 +207,66 @@ public class BaZiController {
     }
 
     /**
-     * 生成八字并使用 Gemini AI 进行分析（增强版：含JWT、Redis缓存、签名验证）
-     *
-     * @param request   请求参数（openId、性别、出生年月日时）
-     * @param timestamp 时间戳（Header）
-     * @param sign      签名（Header）
-     * @return 包含八字结果、AI分析和JWT Token的响应
+     * 清空所有缓存
      */
-    @PostMapping("/analyze")
-    public ResponseEntity<ApiResponse<BaZiAnalysisResponse>> analyzeBaZiWithAI(
-            @RequestBody BaZiRequest request,
-            @RequestHeader(value = "X-Timestamp", required = false) Long timestamp,
-            @RequestHeader(value = "X-Sign", required = false) String sign) {
+    @PostMapping("/cache/clear")
+    public ResponseEntity<Map<String, Object>> clearCache() {
+        cacheService.invalidateAll();
+        Map<String, Object> result = new HashMap<>();
+        result.put("message", "所有缓存已清空");
+        result.put("stats", cacheService.getCacheStats());
+        return ResponseEntity.ok(result);
+    }
 
-        try {
-            // ===== 任务1: 验证OpenId =====
-            if (request.getOpenId() == null || request.getOpenId().isEmpty()) {
-                return ResponseEntity.ok(ApiResponse.error(400, "openId不能为空"));
-            }
+    /**
+     * 构建成功响应并记录业务日志
+     */
+    private ResponseEntity<ApiResponse<BaZiAnalysisResponse>> buildSuccessResponse(
+            BusinessLog businessLog, long startTime, BaZiAnalysisResponse data, String token) {
+        
+        long processingTime = System.currentTimeMillis() - startTime;
+        businessLog.setResponseCode(200);
+        businessLog.setResponseMessage("success");
+        businessLog.setProcessingTime(processingTime);
+        
+        // 记录业务日志
+        businessLogService.log(businessLog);
+        
+        return ResponseEntity.ok(ApiResponse.success(data, token));
+    }
 
-            // ===== 任务4: 验证时间戳（超过2秒返回错误） =====
-            if (timestamp == null) {
-                return ResponseEntity.ok(ApiResponse.error(400, "缺少时间戳参数"));
-            }
-            if (!signatureUtil.validateTimestamp(timestamp)) {
-                return ResponseEntity.ok(ApiResponse.error(400, "请求已过期，时间戳超过2秒"));
-            }
+    /**
+     * 构建错误响应并记录业务日志
+     */
+    private ResponseEntity<ApiResponse<BaZiAnalysisResponse>> buildErrorResponse(
+            BusinessLog businessLog, long startTime, int code, String message) {
+        
+        long processingTime = System.currentTimeMillis() - startTime;
+        businessLog.setResponseCode(code);
+        businessLog.setResponseMessage(message);
+        businessLog.setProcessingTime(processingTime);
+        
+        // 记录业务日志
+        businessLogService.log(businessLog);
+        
+        return ResponseEntity.ok(ApiResponse.error(code, message));
+    }
 
-            // ===== 任务4: 验证签名（防止参数被篡改） =====
-            if (sign == null || sign.isEmpty()) {
-                return ResponseEntity.ok(ApiResponse.error(400, "缺少签名参数"));
-            }
-            Map<String, Object> params = signatureUtil.objectToMap(request);
-            if (!signatureUtil.verifySignature(params, timestamp, sign)) {
-                return ResponseEntity.ok(ApiResponse.error(400, "签名验证失败，参数可能被篡改"));
-            }
-
-            // 验证基本参数
-            validateRequest(request);
-
-            // ===== 任务3: 检查Redis缓存 =====
-            String cacheKey = generateCacheKey(request);
-            Object cachedResult = redisTemplate.opsForValue().get(cacheKey);
-            
-            if (cachedResult != null) {
-                // 缓存命中，直接返回
-                System.out.println("缓存命中: " + cacheKey);
-                BaZiAnalysisResponse cachedResponse = objectMapper.convertValue(cachedResult, BaZiAnalysisResponse.class);
-                
-                // ===== 任务2: 生成JWT Token =====
-                String token = jwtUtil.generateToken(request.getOpenId());
-                
-                return ResponseEntity.ok(ApiResponse.success(cachedResponse, token));
-            }
-
-            // 1. 计算八字
-            BaZiResult baZiResult = baZiService.calculate(request);
-
-            // 2. 使用 Gemini AI 分析（返回JSON格式）
-            Object aiAnalysis = geminiService.analyzeBaZi(baZiResult);
-
-            // 3. 构建响应数据
-            BaZiAnalysisResponse responseData = new BaZiAnalysisResponse(baZiResult, aiAnalysis);
-
-            // ===== 任务3: 将结果存入Redis缓存，过期时间3天 =====
-            redisTemplate.opsForValue().set(cacheKey, responseData, 3, TimeUnit.DAYS);
-            System.out.println("结果已缓存: " + cacheKey);
-
-            // ===== 任务2: 生成JWT Token =====
-            String token = jwtUtil.generateToken(request.getOpenId());
-
-            // ===== 任务5: 返回JSON格式，包含Token =====
-            return ResponseEntity.ok(ApiResponse.success(responseData, token));
-
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.ok(ApiResponse.error(400, e.getMessage()));
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.ok(ApiResponse.error(500, "服务器内部错误: " + e.getMessage()));
+    /**
+     * 获取客户端真实IP
+     */
+    private String getClientIp(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("X-Real-IP");
         }
-    }
-
-    /**
-     * GET方式生成八字并使用 Gemini AI 进行分析
-     *
-     * @param gender 性别
-     * @param year   出生年
-     * @param month  出生月
-     * @param day    出生日
-     * @param hour   出生时
-     * @return 包含八字结果和 AI 分析的响应
-     */
-    @GetMapping("/analyze")
-    public ResponseEntity<Map<String, Object>> analyzeBaZiWithAIGet(
-            @RequestParam String gender,
-            @RequestParam int year,
-            @RequestParam int month,
-            @RequestParam int day,
-            @RequestParam int hour) {
-        BaZiRequest request = new BaZiRequest(gender, year, month, day, hour);
-        validateRequest(request);
-
-        // 1. 计算八字
-        BaZiResult baZiResult = baZiService.calculate(request);
-
-        // 2. 使用 Gemini AI 分析
-        Object aiAnalysis = geminiService.analyzeBaZi(baZiResult);
-
-        // 3. 构建返回结果
-        Map<String, Object> response = new HashMap<>();
-        response.put("baziResult", baZiResult);
-        response.put("aiAnalysis", aiAnalysis);
-
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * 生成缓存Key
-     * 格式: bazi:openId:gender:year:month:day:hour
-     */
-    private String generateCacheKey(BaZiRequest request) {
-        return String.format("bazi:%s:%s:%d:%d:%d:%d",
-                request.getOpenId(),
-                request.getGender(),
-                request.getYear(),
-                request.getMonth(),
-                request.getDay(),
-                request.getHour());
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        // 处理多级代理的情况
+        if (ip != null && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        return ip;
     }
 }

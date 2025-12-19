@@ -39,22 +39,22 @@ public class GeminiService {
 
         try {
             // 初始化 Gemini 客户端
-            Client client = Client.builder()
-                    .apiKey(apiKey)
-                    .build();
+            // Client client = Client.builder()
+            //         .apiKey(apiKey)
+            //         .build();
 
             // 构建提示词（要求返回JSON格式）
-            String prompt = buildPromptWithJsonFormat(baZiResult);
+            // String prompt = buildPromptWithJsonFormat(baZiResult);
 
             // 调用 Gemini API
-            GenerateContentResponse response = client.models.generateContent(
-                    modelName,
-                    prompt,
-                    null);
+            // GenerateContentResponse response = client.models.generateContent(
+            //         modelName,
+            //         prompt,
+            //         null);
 
             // 获取生成的文本
-            String responseText = response.text();
-            
+            // String responseText = response.text();
+            String responseText = "test api";
             // 尝试解析为JSON对象
             try {
                 // 提取JSON部分（如果响应中包含markdown代码块）

@@ -4,7 +4,12 @@ package xw.szbz.cn.model;
  * 四柱八字请求参数
  */
 public class BaZiRequest {
-    private String openId;
+    /**
+     * 微信小程序登录凭证 code
+     * 通过小程序端 wx.login() 获取
+     */
+    private String code;
+    
     private String gender;
     private int year;
     private int month;
@@ -22,12 +27,12 @@ public class BaZiRequest {
         this.hour = hour;
     }
 
-    public String getOpenId() {
-        return openId;
+    public String getCode() {
+        return code;
     }
 
-    public void setOpenId(String openId) {
-        this.openId = openId;
+    public void setCode(String code) {
+        this.code = code;
     }
 
     public String getGender() {

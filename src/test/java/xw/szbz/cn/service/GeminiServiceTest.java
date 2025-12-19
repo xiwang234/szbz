@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +34,7 @@ class GeminiServiceTest {
 
     @Test
     @DisplayName("测试分析八字 - 完整流程")
-    void testAnalyzeBaZi_FullFlow() {
+    void testAnalyzeBaZi_FullFlow() throws Exception {
         // 检查是否配置了 API Key
         String apiKey = "cr_eb5f1a47c692841a0f5408e48514c2b8d1e98f8024b6d6af14ffd60767195bf2";
         if (apiKey == null || apiKey.isEmpty()) {
@@ -45,25 +46,35 @@ class GeminiServiceTest {
         BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23);
         BaZiResult baZiResult = baZiService.calculate(request);
 
-        // 2. 使用 Gemini 分析
-        String analysis = geminiService.analyzeBaZi(baZiResult);
+        // 2. 使用 Gemini 分析（返回Object类型）
+        Object analysisResult = geminiService.analyzeBaZi(baZiResult);
 
         // 3. 验证结果
-        assertNotNull(analysis, "分析结果不应为空");
-        assertFalse(analysis.isEmpty(), "分析结果不应为空字符串");
-        assertTrue(analysis.length() > 100, "分析结果应该包含足够的内容");
+        assertNotNull(analysisResult, "分析结果不应为空");
+        
+        // 4. 格式化输出
+        String analysisText;
+        if (analysisResult instanceof String) {
+            analysisText = (String) analysisResult;
+            assertFalse(analysisText.isEmpty(), "分析结果不应为空字符串");
+            assertTrue(analysisText.length() > 100, "分析结果应该包含足够的内容");
+        } else {
+            // JSON对象，格式化输出
+            ObjectMapper mapper = new ObjectMapper();
+            analysisText = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(analysisResult);
+        }
 
         // 输出结果以便查看
         System.out.println("========== Gemini AI 八字分析结果 ==========");
         System.out.println("八字：" + baZiResult.getFullBaZi());
         System.out.println("\n分析结果：");
-        System.out.println(analysis);
+        System.out.println(analysisText);
         System.out.println("==========================================");
     }
 
     @Test
     @DisplayName("测试分析八字 - 女性八字")
-    void testAnalyzeBaZi_Female() {
+    void testAnalyzeBaZi_Female() throws Exception {
         // 检查是否配置了 API Key
         String apiKey = System.getenv("GEMINI_API_KEY");
         if (apiKey == null || apiKey.isEmpty()) {
@@ -75,17 +86,27 @@ class GeminiServiceTest {
         BaZiRequest request = new BaZiRequest("女", 1989, 11, 23, 20);
         BaZiResult baZiResult = baZiService.calculate(request);
 
-        // 2. 使用 Gemini 分析
-        String analysis = geminiService.analyzeBaZi(baZiResult);
+        // 2. 使用 Gemini 分析（返回Object类型）
+        Object analysisResult = geminiService.analyzeBaZi(baZiResult);
 
         // 3. 验证结果
-        assertNotNull(analysis);
-        assertFalse(analysis.isEmpty());
+        assertNotNull(analysisResult);
+
+        // 4. 格式化输出
+        String analysisText;
+        if (analysisResult instanceof String) {
+            analysisText = (String) analysisResult;
+            assertFalse(analysisText.isEmpty());
+        } else {
+            // JSON对象，格式化输出
+            ObjectMapper mapper = new ObjectMapper();
+            analysisText = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(analysisResult);
+        }
 
         System.out.println("========== Gemini AI 八字分析结果（女性）==========");
         System.out.println("八字：" + baZiResult.getFullBaZi());
         System.out.println("\n分析结果：");
-        System.out.println(analysis);
+        System.out.println(analysisText);
         System.out.println("==========================================");
     }
 

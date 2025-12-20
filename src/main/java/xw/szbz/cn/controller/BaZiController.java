@@ -103,7 +103,6 @@ public class BaZiController {
 
         } catch (Exception e) {
             System.err.println("登录服务器错误: " + e.getMessage());
-            e.printStackTrace();
             return ResponseEntity.ok(ApiResponse.error(500, "服务器内部错误: " + e.getMessage()));
         }
     }
@@ -129,7 +128,7 @@ public class BaZiController {
 
         long startTime = System.currentTimeMillis();
         BusinessLog businessLog = new BusinessLog();
-        String openId = null;
+        String openId = "";
         
         try {
             // 记录请求信息
@@ -220,7 +219,6 @@ public class BaZiController {
             return buildErrorResponse(businessLog, startTime, 400, e.getMessage());
         } catch (Exception e) {
             System.err.println("服务器错误: " + e.getMessage());
-            e.printStackTrace();
             return buildErrorResponse(businessLog, startTime, 500, "服务器内部错误: " + e.getMessage());
         }
     }

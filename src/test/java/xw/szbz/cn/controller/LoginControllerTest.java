@@ -2,7 +2,6 @@ package xw.szbz.cn.controller;
 
 import org.junit.jupiter.api.Test;
 import xw.szbz.cn.model.LoginRequest;
-import xw.szbz.cn.util.JwtUtil;
 
 /**
  * 登录接口测试

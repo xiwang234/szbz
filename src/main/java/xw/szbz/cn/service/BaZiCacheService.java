@@ -6,7 +6,6 @@ import com.github.benmanes.caffeine.cache.Cache;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import xw.szbz.cn.model.BaZiAnalysisResponse;
-import xw.szbz.cn.model.BaZiRequest;
 
 /**
  * 八字缓存服务

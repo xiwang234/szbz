@@ -1,4 +1,0 @@
--------------------------------------------------------------------------------
-Test set: xw.szbz.cn.SecurityIntegrationTest
--------------------------------------------------------------------------------
-Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.837 s -- in xw.szbz.cn.SecurityIntegrationTest

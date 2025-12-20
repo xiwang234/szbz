@@ -4,9 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import com.google.genai.Client;
-import com.google.genai.types.GenerateContentResponse;
-
 import xw.szbz.cn.model.BaZiResult;
 
 /**

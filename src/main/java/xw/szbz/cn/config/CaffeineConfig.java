@@ -27,7 +27,7 @@ public class CaffeineConfig {
     public Cache<String, String> baziCache() {
         return Caffeine.newBuilder()
                 .maximumSize(10000)
-                .expireAfterWrite(3, TimeUnit.DAYS)
+                .expireAfterWrite(30, TimeUnit.DAYS)
                 .recordStats() // 启用统计信息
                 .build();
     }

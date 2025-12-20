@@ -14,8 +14,10 @@ xw\szbz\cn\BaZiCalculator.class
 xw\szbz\cn\config\WeChatConfig.class
 xw\szbz\cn\model\BaZiAnalysisResponse.class
 xw\szbz\cn\model\ApiResponse.class
+xw\szbz\cn\model\LoginResponse.class
 xw\szbz\cn\model\BaZiResult$BirthInfo.class
 xw\szbz\cn\model\BaZiResult.class
+xw\szbz\cn\model\LoginRequest.class
 xw\szbz\cn\model\WeChatSessionResponse.class
 xw\szbz\cn\util\JwtUtil.class
 xw\szbz\cn\model\Pillar.class

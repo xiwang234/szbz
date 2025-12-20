@@ -4,12 +4,6 @@ package xw.szbz.cn.model;
  * 四柱八字请求参数
  */
 public class BaZiRequest {
-    /**
-     * 微信小程序登录凭证 code
-     * 通过小程序端 wx.login() 获取
-     */
-    private String code;
-    
     private String gender;
     private int year;
     private int month;
@@ -25,14 +19,6 @@ public class BaZiRequest {
         this.month = month;
         this.day = day;
         this.hour = hour;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
     }
 
     public String getGender() {

@@ -23,9 +23,16 @@ public class WeChatService {
 
     @Autowired
     public WeChatService(WeChatConfig weChatConfig, ObjectMapper objectMapper) {
+        this(weChatConfig, objectMapper, new RestTemplate());
+    }
+
+    /**
+     * 构造函数（用于测试时注入 Mock RestTemplate）
+     */
+    WeChatService(WeChatConfig weChatConfig, ObjectMapper objectMapper, RestTemplate restTemplate) {
         this.weChatConfig = weChatConfig;
         this.objectMapper = objectMapper;
-        this.restTemplate = new RestTemplate();
+        this.restTemplate = restTemplate;
     }
 
     /**

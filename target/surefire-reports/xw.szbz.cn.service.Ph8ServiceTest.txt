@@ -1,0 +1,34 @@
+-------------------------------------------------------------------------------
+Test set: xw.szbz.cn.service.Ph8ServiceTest
+-------------------------------------------------------------------------------
+Tests run: 4, Failures: 1, Errors: 1, Skipped: 0, Time elapsed: 1.702 s <<< FAILURE! -- in xw.szbz.cn.service.Ph8ServiceTest
+xw.szbz.cn.service.Ph8ServiceTest.testAnalyzeBaZi_NoApiKey -- Time elapsed: 0.816 s <<< FAILURE!
+org.opentest4j.AssertionFailedError: Unexpected exception type thrown, expected: <java.lang.IllegalStateException> but was: <java.lang.RuntimeException>
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:67)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:35)
+	at org.junit.jupiter.api.Assertions.assertThrows(Assertions.java:3115)
+	at xw.szbz.cn.service.Ph8ServiceTest.testAnalyzeBaZi_NoApiKey(Ph8ServiceTest.java:106)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+Caused by: java.lang.RuntimeException: 调用 Ph8 API 失败: 无法从响应中解析内容
+	at xw.szbz.cn.service.Ph8Service.analyzeBaZi(Ph8Service.java:115)
+	at xw.szbz.cn.service.Ph8ServiceTest.lambda$testAnalyzeBaZi_NoApiKey$0(Ph8ServiceTest.java:107)
+	at org.junit.jupiter.api.AssertThrows.assertThrows(AssertThrows.java:53)
+	... 6 more
+Caused by: java.lang.RuntimeException: 无法从响应中解析内容
+	at xw.szbz.cn.service.Ph8Service.analyzeBaZi(Ph8Service.java:109)
+	... 8 more
+
+xw.szbz.cn.service.Ph8ServiceTest.testAnalyzeBaZi_FullFlow -- Time elapsed: 0.129 s <<< ERROR!
+java.lang.RuntimeException: 调用 Ph8 API 失败: 无法从响应中解析内容
+	at xw.szbz.cn.service.Ph8Service.analyzeBaZi(Ph8Service.java:115)
+	at xw.szbz.cn.service.Ph8ServiceTest.testAnalyzeBaZi_FullFlow(Ph8ServiceTest.java:49)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+Caused by: java.lang.RuntimeException: 无法从响应中解析内容
+	at xw.szbz.cn.service.Ph8Service.analyzeBaZi(Ph8Service.java:109)
+	... 4 more
+

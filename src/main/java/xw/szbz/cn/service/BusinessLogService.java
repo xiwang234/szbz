@@ -7,11 +7,12 @@ import org.springframework.stereotype.Service;
 import xw.szbz.cn.model.BusinessLog;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 
@@ -73,16 +74,17 @@ public class BusinessLogService {
             
             // 获取当天日志文件路径
             String logFileName = getLogFileName();
-            File logFile = new File(LOG_DIR, logFileName);
+            Path logFilePath = Paths.get(LOG_DIR, logFileName);
             
             // 将日志对象转换为 JSON 字符串（单行）
             String jsonLog = objectMapper.writeValueAsString(log);
             
-            // 追加写入日志文件
-            try (FileWriter writer = new FileWriter(logFile, true)) {
-                writer.write(jsonLog);
-                writer.write(System.lineSeparator()); // 换行
-            }
+            // 追加写入日志文件（使用UTF-8编码）
+            String logLine = jsonLog + System.lineSeparator();
+            Files.write(logFilePath, 
+                       logLine.getBytes(StandardCharsets.UTF_8),
+                       StandardOpenOption.CREATE,
+                       StandardOpenOption.APPEND);
             
         } catch (IOException e) {
             System.err.println("写入业务日志失败: " + e.getMessage());

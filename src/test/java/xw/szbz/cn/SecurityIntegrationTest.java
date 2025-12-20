@@ -48,9 +48,8 @@ public class SecurityIntegrationTest {
 
     @Test
     public void testSignatureGeneration() {
-        // 准备参数（使用微信小程序登录 code）
+        // 准备参数
         Map<String, Object> params = new HashMap<>();
-        params.put("code", "081nBp0w3MqiWf27BQ2w3UWgRg1nBp0P");  // 微信小程序登录凭证
         params.put("gender", "男");
         params.put("year", 1984);
         params.put("month", 11);
@@ -95,9 +94,8 @@ public class SecurityIntegrationTest {
 
     @Test
     public void testCompleteRequestFlow() {
-        // 准备完整的请求参数（微信小程序登录版）
+        // 准备完整的请求参数
         BaZiRequest request = new BaZiRequest();
-        request.setCode("081nBp0w3MqiWf27BQ2w3UWgRg1nBp0P");  // 微信登录凭证
         request.setGender("男");
         request.setYear(1984);
         request.setMonth(11);
@@ -111,7 +109,7 @@ public class SecurityIntegrationTest {
         Map<String, Object> params = signatureUtil.objectToMap(request);
         String signature = signatureUtil.generateSignature(params, timestamp);
         
-        System.out.println("=== 完整请求示例（微信小程序登录） ===");
+        System.out.println("=== 完整请求示例 ===");
         System.out.println("Request Body: " + request);
         System.out.println("X-Timestamp: " + timestamp);
         System.out.println("X-Sign: " + signature);
@@ -124,8 +122,8 @@ public class SecurityIntegrationTest {
         System.out.println("Signature Valid: " + signatureValid);
         
         if (timestampValid && signatureValid) {
-            // 模拟：实际应用中会调用微信接口换取 openId
-            String mockOpenId = "oABCD1234567890";  // 模拟从微信获取的 openId
+            // 模拟：实际应用中Token从登录接口获取
+            String mockOpenId = "oABCD1234567890";
             String token = jwtUtil.generateToken(mockOpenId);
             System.out.println("Generated JWT Token: " + token);
         }
@@ -136,9 +134,8 @@ public class SecurityIntegrationTest {
 
     @Test
     public void testCurlCommandGeneration() {
-        // 准备参数（微信小程序登录版）
+        // 准备参数
         Map<String, Object> params = new HashMap<>();
-        params.put("code", "081nBp0w3MqiWf27BQ2w3UWgRg1nBp0P");  // 微信登录凭证
         params.put("gender", "男");
         params.put("year", 1984);
         params.put("month", 11);
@@ -148,28 +145,30 @@ public class SecurityIntegrationTest {
         long timestamp = System.currentTimeMillis();
         String signature = signatureUtil.generateSignature(params, timestamp);
         
+        // 模拟Token（实际使用时从登录接口获取）
+        String mockToken = jwtUtil.generateToken("oABCD1234567890");
+        
         // 生成curl命令（用于手动测试）
-        System.out.println("\n=== CURL测试命令（微信小程序版） ===");
+        System.out.println("\n=== CURL测试命令 ===");
         System.out.println("curl -X POST http://localhost:8080/api/bazi/analyze \\");
         System.out.println("  -H \"Content-Type: application/json\" \\");
+        System.out.println("  -H \"Authorization: Bearer " + mockToken + "\" \\");
         System.out.println("  -H \"X-Timestamp: " + timestamp + "\" \\");
         System.out.println("  -H \"X-Sign: " + signature + "\" \\");
         System.out.println("  -d '{");
-        System.out.println("    \"code\": \"081nBp0w3MqiWf27BQ2w3UWgRg1nBp0P\",");
         System.out.println("    \"gender\": \"男\",");
         System.out.println("    \"year\": 1984,");
         System.out.println("    \"month\": 11,");
         System.out.println("    \"day\": 27,");
         System.out.println("    \"hour\": 0");
         System.out.println("  }'");
-        System.out.println("\n注意：code 需要从小程序端 wx.login() 获取，且有效期仅5分钟");
+        System.out.println("\n注意：Token 需要先调用 /api/bazi/login 接口获取");
     }
 
     @Test
     public void testPostmanRequestExample() {
-        // 准备参数（微信小程序登录版）
+        // 准备参数
         Map<String, Object> params = new HashMap<>();
-        params.put("code", "081nBp0w3MqiWf27BQ2w3UWgRg1nBp0P");  // 微信登录凭证
         params.put("gender", "男");
         params.put("year", 1984);
         params.put("month", 11);
@@ -179,11 +178,15 @@ public class SecurityIntegrationTest {
         long timestamp = System.currentTimeMillis();
         String signature = signatureUtil.generateSignature(params, timestamp);
         
-        System.out.println("\n=== Postman配置示例（微信小程序版） ===");
+        // 模拟Token（实际使用时从登录接口获取）
+        String mockToken = jwtUtil.generateToken("oABCD1234567890");
+        
+        System.out.println("\n=== Postman配置示例 ===");
         System.out.println("URL: http://localhost:8080/api/bazi/analyze");
         System.out.println("Method: POST");
         System.out.println("\nHeaders:");
         System.out.println("  Content-Type: application/json");
+        System.out.println("  Authorization: Bearer " + mockToken);
         System.out.println("  X-Timestamp: " + timestamp);
         System.out.println("  X-Sign: " + signature);
         System.out.println("\nBody (raw JSON):");
@@ -192,9 +195,9 @@ public class SecurityIntegrationTest {
                     .writeValueAsString(params);
             System.out.println(jsonBody);
             System.out.println("\n⚠️  注意事项：");
-            System.out.println("1. code 需要从小程序端通过 wx.login() 获取");
-            System.out.println("2. code 有效期仅5分钟，使用后立即失效");
-            System.out.println("3. 时间戳有效期为2秒，超时需重新生成签名");
+            System.out.println("1. Token 需要先通过 /api/bazi/login 接口获取");
+            System.out.println("2. 时间戳有效期为2秒，超时需重新生成签名");
+            System.out.println("3. Token有效期为24小时");
         } catch (Exception e) {
             e.printStackTrace();
         }

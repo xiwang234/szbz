@@ -1,0 +1,4 @@
+-------------------------------------------------------------------------------
+Test set: xw.szbz.cn.controller.BaZiControllerTest
+-------------------------------------------------------------------------------
+Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.321 s -- in xw.szbz.cn.controller.BaZiControllerTest

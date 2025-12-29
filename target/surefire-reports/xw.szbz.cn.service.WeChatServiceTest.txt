@@ -1,0 +1,15 @@
+-------------------------------------------------------------------------------
+Test set: xw.szbz.cn.service.WeChatServiceTest
+-------------------------------------------------------------------------------
+Tests run: 2, Failures: 0, Errors: 1, Skipped: 0, Time elapsed: 0.389 s <<< FAILURE! -- in xw.szbz.cn.service.WeChatServiceTest
+xw.szbz.cn.service.WeChatServiceTest.testCode2Session_Success -- Time elapsed: 0.385 s <<< ERROR!
+java.lang.RuntimeException: 调用微信 code2Session 接口失败: 微信登录失败: errcode=40029, errmsg=invalid code, rid: 69527817-2faebe14-2f6919e0
+	at xw.szbz.cn.service.WeChatService.code2Session(WeChatService.java:75)
+	at xw.szbz.cn.service.WeChatServiceTest.testCode2Session_Success(WeChatServiceTest.java:85)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:568)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1511)
+Caused by: java.lang.RuntimeException: 微信登录失败: errcode=40029, errmsg=invalid code, rid: 69527817-2faebe14-2f6919e0
+	at xw.szbz.cn.service.WeChatService.code2Session(WeChatService.java:69)
+	... 4 more
+

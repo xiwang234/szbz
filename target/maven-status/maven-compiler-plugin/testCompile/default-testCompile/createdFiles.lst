@@ -1,0 +1,16 @@
+xw\szbz\cn\service\BaZiServiceTest.class
+xw\szbz\cn\service\WeChatServiceTest.class
+xw\szbz\cn\enums\GenderTest.class
+xw\szbz\cn\util\PromptTemplateUtilTest.class
+xw\szbz\cn\controller\LoginControllerTest.class
+xw\szbz\cn\service\Ph8ServiceTest.class
+xw\szbz\cn\enums\TianGanTest.class
+xw\szbz\cn\service\QwenServiceTest.class
+xw\szbz\cn\SecurityIntegrationTest.class
+xw\szbz\cn\service\GeminiServiceTest.class
+xw\szbz\cn\service\QuickGeminiTest.class
+xw\szbz\cn\service\LiuRenServiceTest.class
+xw\szbz\cn\controller\BaZiControllerTest.class
+xw\szbz\cn\util\SignatureUtilTest.class
+xw\szbz\cn\SzbzApiApplicationTests.class
+xw\szbz\cn\enums\DiZhiTest.class

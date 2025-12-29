@@ -1,5 +1,7 @@
 package xw.szbz.cn.controller;
 
+import static java.lang.Thread.sleep;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -20,14 +22,17 @@ import xw.szbz.cn.model.BaZiAnalysisResponse;
 import xw.szbz.cn.model.BaZiRequest;
 import xw.szbz.cn.model.BaZiResult;
 import xw.szbz.cn.model.BusinessLog;
+import xw.szbz.cn.model.LiuRenRequest;
 import xw.szbz.cn.model.LoginRequest;
 import xw.szbz.cn.model.LoginResponse;
 import xw.szbz.cn.service.BaZiCacheService;
 import xw.szbz.cn.service.BaZiService;
 import xw.szbz.cn.service.BusinessLogService;
 import xw.szbz.cn.service.GeminiService;
+import xw.szbz.cn.service.LiuRenService;
 import xw.szbz.cn.service.WeChatService;
 import xw.szbz.cn.util.JwtUtil;
+import xw.szbz.cn.util.PromptTemplateUtil;
 import xw.szbz.cn.util.SignatureUtil;
 
 /**
@@ -45,6 +50,8 @@ public class BaZiController {
     private final BaZiCacheService cacheService;
     private final BusinessLogService businessLogService;
     private final ObjectMapper objectMapper;
+    private final PromptTemplateUtil promptTemplateUtil;
+    private final LiuRenService liuRenService;
 
     @Autowired
     public BaZiController(BaZiService baZiService, 
@@ -54,7 +61,9 @@ public class BaZiController {
                           SignatureUtil signatureUtil,
                           BaZiCacheService cacheService,
                           BusinessLogService businessLogService,
-                          ObjectMapper objectMapper) {
+                          ObjectMapper objectMapper,
+                          PromptTemplateUtil promptTemplateUtil,
+                          LiuRenService liuRenService) {
         this.baZiService = baZiService;
         this.geminiService = geminiService;
         this.weChatService = weChatService;
@@ -63,6 +72,8 @@ public class BaZiController {
         this.cacheService = cacheService;
         this.businessLogService = businessLogService;
         this.objectMapper = objectMapper;
+        this.promptTemplateUtil = promptTemplateUtil;
+        this.liuRenService = liuRenService;
     }
 
     /**
@@ -104,6 +115,131 @@ public class BaZiController {
         } catch (Exception e) {
             System.err.println("登录服务器错误: " + e.getMessage());
             return ResponseEntity.ok(ApiResponse.error(500, "服务器内部错误: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 六壬预测接口
+     * 根据课传信息、占问事项等生成预测提示词，并调用AI进行分析
+     *
+     * @param request 六壬预测请求（包含课传信息、占问事项、占问背景、出生年份）
+     * @param token JWT Token（Header）
+     * @param timestamp 时间戳（Header）
+     * @param sign 签名（Header）
+     * @param httpRequest HTTP请求对象
+     * @return 包含AI预测结果的响应
+     */
+    @PostMapping("/wenji")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> predictLiuRen(
+            @RequestBody LiuRenRequest request,
+            @RequestHeader(value = "Authorization", required = false) String token,
+            @RequestHeader(value = "X-Timestamp", required = false) Long timestamp,
+            @RequestHeader(value = "X-Sign", required = false) String sign,
+            HttpServletRequest httpRequest) {
+
+        long startTime = System.currentTimeMillis();
+        BusinessLog businessLog = new BusinessLog();
+        String openId = "";
+        
+        try {
+            // 记录请求信息
+            businessLog.setRequestIp(getClientIp(httpRequest));
+            businessLog.setUserAgent(httpRequest.getHeader("User-Agent"));
+
+            // ===== Step 1: 验证JWT Token =====
+            if (token == null || token.isEmpty()) {
+                return buildLiuRenErrorResponse(businessLog, startTime, 401, "未提供认证Token");
+            }
+            
+            if (token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+            
+            if (!jwtUtil.validateToken(token)) {
+                return buildLiuRenErrorResponse(businessLog, startTime, 401, "Token无效或已过期");
+            }
+            
+            try {
+                openId = jwtUtil.getOpenIdFromToken(token);
+                businessLog.setOpenId(openId);
+                System.out.println("Token验证成功，OpenId: " + openId);
+            } catch (Exception e) {
+                return buildLiuRenErrorResponse(businessLog, startTime, 401, "Token解析失败");
+            }
+
+            // ===== Step 2: 验证时间戳 =====
+            if (timestamp == null) {
+                return buildLiuRenErrorResponse(businessLog, startTime, 400, "缺少时间戳参数");
+            }
+            if (!signatureUtil.validateTimestamp(timestamp)) {
+                return buildLiuRenErrorResponse(businessLog, startTime, 400, "请求已过期，时间戳超过2秒");
+            }
+
+            // ===== Step 3: 验证签名 =====
+            if (sign == null || sign.isEmpty()) {
+                return buildLiuRenErrorResponse(businessLog, startTime, 400, "缺少签名参数");
+            }
+            Map<String, Object> params = signatureUtil.objectToMap(request);
+            if (!signatureUtil.verifySignature(params, timestamp, sign)) {
+                return buildLiuRenErrorResponse(businessLog, startTime, 400, "签名验证失败，参数可能被篡改");
+            }
+
+            // ===== Step 4: 验证参数 =====
+            if (request.getQuestion() == null || request.getQuestion().isEmpty()) {
+                return buildLiuRenErrorResponse(businessLog, startTime, 400, "占问事项不能为空");
+            }
+            if (request.getBirthYear() == null) {
+                return buildLiuRenErrorResponse(businessLog, startTime, 400, "出生年份不能为空");
+            }
+            if (request.getGender() == null || request.getGender().isEmpty()) {
+                return buildLiuRenErrorResponse(businessLog, startTime, 400, "性别不能为空");
+            }
+            if (!request.getGender().equals("male") && !request.getGender().equals("female")) {
+                return buildLiuRenErrorResponse(businessLog, startTime, 400, "性别只能是'男'或'女'");
+            }
+
+            // ===== Step 5: 生成课传信息（根据当前时间排出农历四柱及大六壬天将） =====
+            String courseInfo = liuRenService.generateCourseInfo();
+            System.out.println("生成课传信息: " + courseInfo);
+
+            // ===== Step 6: 将出生年份转换为干支年份 =====
+            String ganZhiYear = liuRenService.convertBirthYearToGanZhi(request.getBirthYear());
+            System.out.println("干支年份: " + ganZhiYear);
+
+            // ===== Step 7: 组合干支信息和性别生成birthInfo =====
+            String birthInfo = liuRenService.generateBirthInfo(request.getBirthYear(), request.getGender());
+            System.out.println("出生信息: " + birthInfo);
+
+            // ===== Step 8: 渲染提示词模板 =====
+            String prompt = promptTemplateUtil.renderLiuRenTemplate(
+                courseInfo,
+                request.getQuestion(),
+                request.getBackground(),
+                birthInfo
+            );
+
+            // ===== Step 9: 调用Gemini AI进行预测 =====
+            String aiPrediction = geminiService.generateContent(prompt);
+            sleep(5000);
+            // ===== Step 10: 构建响应 =====
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("prediction", aiPrediction);
+            responseData.put("courseInfo", courseInfo);
+            responseData.put("question", request.getQuestion());
+            responseData.put("birthInfo", birthInfo);
+
+            // 记录业务日志
+            businessLog.setResponseCode(200);
+            businessLog.setResponseMessage("success");
+            businessLog.setProcessingTime(System.currentTimeMillis() - startTime);
+            businessLogService.log(businessLog);
+
+            return ResponseEntity.ok(ApiResponse.success(responseData));
+
+        } catch (Exception e) {
+            System.err.println("六壬预测服务器错误: " + e.getMessage());
+            e.printStackTrace();
+            return buildLiuRenErrorResponse(businessLog, startTime, 500, "服务器内部错误: " + e.getMessage());
         }
     }
 
@@ -287,6 +423,23 @@ public class BaZiController {
      * 构建错误响应并记录业务日志
      */
     private ResponseEntity<ApiResponse<BaZiAnalysisResponse>> buildErrorResponse(
+            BusinessLog businessLog, long startTime, int code, String message) {
+        
+        long processingTime = System.currentTimeMillis() - startTime;
+        businessLog.setResponseCode(code);
+        businessLog.setResponseMessage(message);
+        businessLog.setProcessingTime(processingTime);
+        
+        // 记录业务日志
+        businessLogService.log(businessLog);
+        
+        return ResponseEntity.ok(ApiResponse.error(code, message));
+    }
+
+    /**
+     * 构建六壬预测错误响应
+     */
+    private ResponseEntity<ApiResponse<Map<String, Object>>> buildLiuRenErrorResponse(
             BusinessLog businessLog, long startTime, int code, String message) {
         
         long processingTime = System.currentTimeMillis() - startTime;

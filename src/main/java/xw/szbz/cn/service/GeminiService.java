@@ -69,6 +69,42 @@ public class GeminiService {
     }
 
     /**
+     * 通用文本生成方法（用于六壬预测等场景）
+     *
+     * @param prompt 提示词
+     * @return Gemini AI 生成的文本
+     * @throws IllegalStateException 如果 API key 未配置
+     * @throws RuntimeException      如果调用 Gemini API 失败
+     */
+    public String generateContent(String prompt) {
+        if (apiKey == null || apiKey.isEmpty()) {
+            throw new IllegalStateException("Gemini API key 未配置。请在 application.properties 中设置 gemini.api.key");
+        }
+
+        try {
+            // 初始化 Gemini 客户端
+            // Client client = Client.builder()
+            //         .apiKey(apiKey)
+            //         .build();
+
+            // 调用 Gemini API
+            // GenerateContentResponse response = client.models.generateContent(
+            //         modelName,
+            //         prompt,
+            //         null);
+
+            // 返回生成的文本
+            // return response.text();
+            
+            // 临时返回（实际应该返回 response.text()）
+            return "这是六壬预测的模拟结果。实际使用时请取消注释上面的代码以调用真实的Gemini API。";
+
+        } catch (Exception e) {
+            throw new RuntimeException("调用 Gemini API 失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * 提取JSON内容（去除markdown代码块标记）
      */
     private String extractJson(String text) {

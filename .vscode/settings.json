@@ -1,16 +1,16 @@
 {
   // Java配置 - Windows环境
-  "java.jdt.ls.java.home": "D:\\tools\\Java\\jdk-17.0.2",
+  "java.jdt.ls.java.home": "/opt/homebrew/Cellar/openjdk@17/17.0.17/libexec/openjdk.jdk/Contents/Home",
   "java.configuration.runtimes": [
     {
       "name": "JavaSE-17",
-      "path": "D:\\tools\\Java\\jdk-17.0.2",
+      "path": "/opt/homebrew/Cellar/openjdk@17/17.0.17/libexec/openjdk.jdk/Contents/Home",
       "default": true
     }
   ],
   
   // Maven配置
-  "java.configuration.maven.userSettings": null,
+  "java.configuration.maven.userSettings": "",
   "maven.executable.path": "mvn",
   
   // 编译配置
@@ -18,8 +18,8 @@
   "java.configuration.updateBuildConfiguration": "automatic",
   
   // 代码格式化
-  "java.format.settings.url": null,
-  "java.format.settings.profile": null,
+  "java.format.settings.url": "",
+  "java.format.settings.profile": "",
   
   // 项目配置
   "java.project.sourcePaths": [

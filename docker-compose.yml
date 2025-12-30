@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  szbz-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: szbz-api
+    ports:
+      - "8080:8080"
+    volumes:
+      # 挂载日志目录到宿主机
+      - ./docker-logs:/app/logs
+      - ./docker-syslog:/app/syslog
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - TZ=Asia/Shanghai
+      # 可选：通过环境变量覆盖配置
+      # - GEMINI_API_KEY=your_api_key_here
+      # - QWEN_API_KEY=your_api_key_here
+      # - PH8_API_KEY=your_api_key_here
+    restart: unless-stopped
+    networks:
+      - szbz-network
+
+networks:
+  szbz-network:
+    driver: bridge

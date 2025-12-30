@@ -5,7 +5,6 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -44,10 +43,10 @@ public class PromptTemplateUtil {
      */
     public String renderTemplate(String templatePath, Map<String, String> variables) {
         try {
-            // 读取模板文件
+            // 读取模板文件（支持jar包和文件系统）
             ClassPathResource resource = new ClassPathResource(templatePath);
-            String template = Files.readString(resource.getFile().toPath(), StandardCharsets.UTF_8);
-            
+            String template = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+
             // 替换所有变量
             String result = template;
             for (Map.Entry<String, String> entry : variables.entrySet()) {
@@ -55,7 +54,7 @@ public class PromptTemplateUtil {
                 String value = entry.getValue() != null ? entry.getValue() : "";
                 result = result.replace(placeholder, value);
             }
-            
+
             return result;
         } catch (IOException e) {
             throw new RuntimeException("无法加载模板文件: " + templatePath, e);

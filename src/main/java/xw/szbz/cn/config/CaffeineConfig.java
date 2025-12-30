@@ -30,4 +30,21 @@ public class CaffeineConfig {
                 .recordStats() // 启用统计信息
                 .build();
     }
+
+    /**
+     * API调用限流缓存
+     * - 最大条目数：10000
+     * - 过期时间：1天（每天零点自动清零）
+     * - 过期策略：写入后过期
+     * - Key: openId:apiName (例如: "oABC123:wenji")
+     * - Value: 调用次数（Integer字符串）
+     */
+    @Bean
+    public Cache<String, Integer> rateLimitCache() {
+        return Caffeine.newBuilder()
+                .maximumSize(10000)
+                .expireAfterWrite(1, TimeUnit.DAYS)
+                .recordStats() // 启用统计信息
+                .build();
+    }
 }

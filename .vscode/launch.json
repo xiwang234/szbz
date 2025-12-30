@@ -18,7 +18,7 @@
       "mainClass": "xw.szbz.cn.SzbzApiApplication",
       "projectName": "szbzApi",
       "env": {
-        "GEMINI_API_KEY": "${env:GEMINI_API_KEY}"
+        "GEMINI_API_KEY": "AIzaSyA9aKhNqwaYN0bsDqzqi9cmHL84WpM-xX8"
       }
     },
     {

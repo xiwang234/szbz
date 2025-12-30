@@ -1,0 +1,70 @@
+2025-12-30 16:13:31.839 [main] INFO  xw.szbz.cn.SzbzApiApplication - Starting SzbzApiApplication using Java 17.0.17 with PID 29190 (/Users/wang/Documents/cursor_demo/szbz/szbz/target/classes started by wang in /Users/wang/Documents/cursor_demo/szbz/szbz)
+2025-12-30 16:13:31.842 [main] INFO  xw.szbz.cn.SzbzApiApplication - No active profile set, falling back to 1 default profile: "default"
+2025-12-30 16:13:32.209 [main] INFO  o.s.boot.web.embedded.tomcat.TomcatWebServer - Tomcat initialized with port 8080 (http)
+2025-12-30 16:13:32.212 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2025-12-30 16:13:32.213 [main] INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2025-12-30 16:13:32.213 [main] INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.16]
+2025-12-30 16:13:32.242 [main] INFO  o.a.c.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-12-30 16:13:32.242 [main] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 380 ms
+2025-12-30 16:13:32.499 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+2025-12-30 16:13:32.513 [main] INFO  o.s.boot.web.embedded.tomcat.TomcatWebServer - Tomcat started on port 8080 (http) with context path ''
+2025-12-30 16:13:32.517 [main] INFO  xw.szbz.cn.SzbzApiApplication - Started SzbzApiApplication in 0.897 seconds (process running for 1.1)
+2025-12-30 16:14:25.945 [http-nio-8080-exec-1] INFO  o.a.c.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2025-12-30 16:14:25.945 [http-nio-8080-exec-1] INFO  org.springframework.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2025-12-30 16:14:25.946 [http-nio-8080-exec-1] INFO  org.springframework.web.servlet.DispatcherServlet - Completed initialization in 1 ms
+2025-12-30 16:24:11.569 [main] INFO  xw.szbz.cn.SzbzApiApplication - Starting SzbzApiApplication using Java 17.0.17 with PID 32147 (/Users/wang/Documents/cursor_demo/szbz/szbz/target/classes started by wang in /Users/wang/Documents/cursor_demo/szbz/szbz)
+2025-12-30 16:24:11.571 [main] INFO  xw.szbz.cn.SzbzApiApplication - No active profile set, falling back to 1 default profile: "default"
+2025-12-30 16:24:11.979 [main] INFO  o.s.boot.web.embedded.tomcat.TomcatWebServer - Tomcat initialized with port 8080 (http)
+2025-12-30 16:24:11.982 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2025-12-30 16:24:11.983 [main] INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2025-12-30 16:24:11.983 [main] INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.16]
+2025-12-30 16:24:12.013 [main] INFO  o.a.c.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-12-30 16:24:12.013 [main] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 420 ms
+2025-12-30 16:24:12.291 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+2025-12-30 16:24:12.306 [main] INFO  o.s.boot.web.embedded.tomcat.TomcatWebServer - Tomcat started on port 8080 (http) with context path ''
+2025-12-30 16:24:12.312 [main] INFO  xw.szbz.cn.SzbzApiApplication - Started SzbzApiApplication in 0.967 seconds (process running for 1.147)
+2025-12-30 16:25:19.006 [main] INFO  xw.szbz.cn.SzbzApiApplication - Starting SzbzApiApplication using Java 17.0.17 with PID 33134 (/Users/wang/Documents/cursor_demo/szbz/szbz/target/classes started by wang in /Users/wang/Documents/cursor_demo/szbz/szbz)
+2025-12-30 16:25:19.007 [main] INFO  xw.szbz.cn.SzbzApiApplication - No active profile set, falling back to 1 default profile: "default"
+2025-12-30 16:25:19.384 [main] INFO  o.s.boot.web.embedded.tomcat.TomcatWebServer - Tomcat initialized with port 8080 (http)
+2025-12-30 16:25:19.388 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-8080"]
+2025-12-30 16:25:19.389 [main] INFO  org.apache.catalina.core.StandardService - Starting service [Tomcat]
+2025-12-30 16:25:19.389 [main] INFO  org.apache.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.16]
+2025-12-30 16:25:19.417 [main] INFO  o.a.c.core.ContainerBase.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2025-12-30 16:25:19.417 [main] INFO  o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 389 ms
+2025-12-30 16:25:19.683 [main] INFO  org.apache.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-8080"]
+2025-12-30 16:25:19.696 [main] INFO  o.s.boot.web.embedded.tomcat.TomcatWebServer - Tomcat started on port 8080 (http) with context path ''
+2025-12-30 16:25:19.700 [main] INFO  xw.szbz.cn.SzbzApiApplication - Started SzbzApiApplication in 0.923 seconds (process running for 1.123)
+2025-12-30 16:27:19.428 [main] INFO  xw.szbz.cn.SzbzApiApplicationTests - Starting SzbzApiApplicationTests using Java 17.0.17 with PID 33897 (started by wang in /Users/wang/Documents/cursor_demo/szbz/szbz)
+2025-12-30 16:27:19.429 [main] INFO  xw.szbz.cn.SzbzApiApplicationTests - No active profile set, falling back to 1 default profile: "default"
+2025-12-30 16:27:19.990 [main] INFO  xw.szbz.cn.SzbzApiApplicationTests - Started SzbzApiApplicationTests in 0.706 seconds (process running for 1.117)
+2025-12-30 16:27:20.366 [main] INFO  o.s.t.c.support.AnnotationConfigContextLoaderUtils - Could not detect default configuration classes for test class [xw.szbz.cn.util.SignatureUtilTest]: SignatureUtilTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2025-12-30 16:27:20.370 [main] INFO  o.s.b.t.context.SpringBootTestContextBootstrapper - Found @SpringBootConfiguration xw.szbz.cn.SzbzApiApplication for test class xw.szbz.cn.util.SignatureUtilTest
+2025-12-30 16:27:20.392 [main] INFO  o.s.t.c.support.AnnotationConfigContextLoaderUtils - Could not detect default configuration classes for test class [xw.szbz.cn.util.PromptTemplateUtilTest]: PromptTemplateUtilTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2025-12-30 16:27:20.392 [main] INFO  o.s.b.t.context.SpringBootTestContextBootstrapper - Found @SpringBootConfiguration xw.szbz.cn.SzbzApiApplication for test class xw.szbz.cn.util.PromptTemplateUtilTest
+2025-12-30 16:27:20.463 [main] INFO  o.s.t.c.support.AnnotationConfigContextLoaderUtils - Could not detect default configuration classes for test class [xw.szbz.cn.controller.BaZiControllerTest]: BaZiControllerTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2025-12-30 16:27:20.471 [main] INFO  o.s.b.t.context.SpringBootTestContextBootstrapper - Found @SpringBootConfiguration xw.szbz.cn.SzbzApiApplication for test class xw.szbz.cn.controller.BaZiControllerTest
+2025-12-30 16:27:20.484 [main] INFO  xw.szbz.cn.controller.BaZiControllerTest - Starting BaZiControllerTest using Java 17.0.17 with PID 33897 (started by wang in /Users/wang/Documents/cursor_demo/szbz/szbz)
+2025-12-30 16:27:20.485 [main] INFO  xw.szbz.cn.controller.BaZiControllerTest - No active profile set, falling back to 1 default profile: "default"
+2025-12-30 16:27:20.594 [main] INFO  o.s.b.test.mock.web.SpringBootMockServletContext - Initializing Spring TestDispatcherServlet ''
+2025-12-30 16:27:20.594 [main] INFO  o.s.test.web.servlet.TestDispatcherServlet - Initializing Servlet ''
+2025-12-30 16:27:20.594 [main] INFO  o.s.test.web.servlet.TestDispatcherServlet - Completed initialization in 0 ms
+2025-12-30 16:27:20.598 [main] INFO  xw.szbz.cn.controller.BaZiControllerTest - Started BaZiControllerTest in 0.124 seconds (process running for 1.725)
+2025-12-30 16:27:20.868 [main] INFO  o.s.t.c.support.AnnotationConfigContextLoaderUtils - Could not detect default configuration classes for test class [xw.szbz.cn.SecurityIntegrationTest]: SecurityIntegrationTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2025-12-30 16:27:20.869 [main] INFO  o.s.b.t.context.SpringBootTestContextBootstrapper - Found @SpringBootConfiguration xw.szbz.cn.SzbzApiApplication for test class xw.szbz.cn.SecurityIntegrationTest
+2025-12-30 16:27:20.880 [main] INFO  o.s.t.c.support.AnnotationConfigContextLoaderUtils - Could not detect default configuration classes for test class [xw.szbz.cn.service.GeminiServiceTest]: GeminiServiceTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2025-12-30 16:27:20.884 [main] INFO  o.s.b.t.context.SpringBootTestContextBootstrapper - Found @SpringBootConfiguration xw.szbz.cn.SzbzApiApplication for test class xw.szbz.cn.service.GeminiServiceTest
+2025-12-30 16:27:20.894 [main] INFO  xw.szbz.cn.service.GeminiServiceTest - Starting GeminiServiceTest using Java 17.0.17 with PID 33897 (started by wang in /Users/wang/Documents/cursor_demo/szbz/szbz)
+2025-12-30 16:27:20.894 [main] INFO  xw.szbz.cn.service.GeminiServiceTest - No active profile set, falling back to 1 default profile: "default"
+2025-12-30 16:27:20.981 [main] INFO  xw.szbz.cn.service.GeminiServiceTest - Started GeminiServiceTest in 0.094 seconds (process running for 2.108)
+2025-12-30 16:27:21.440 [main] INFO  o.s.t.c.support.AnnotationConfigContextLoaderUtils - Could not detect default configuration classes for test class [xw.szbz.cn.service.QwenServiceTest]: QwenServiceTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2025-12-30 16:27:21.441 [main] INFO  o.s.b.t.context.SpringBootTestContextBootstrapper - Found @SpringBootConfiguration xw.szbz.cn.SzbzApiApplication for test class xw.szbz.cn.service.QwenServiceTest
+2025-12-30 16:27:21.455 [main] INFO  xw.szbz.cn.service.QwenServiceTest - Starting QwenServiceTest using Java 17.0.17 with PID 33897 (started by wang in /Users/wang/Documents/cursor_demo/szbz/szbz)
+2025-12-30 16:27:21.455 [main] INFO  xw.szbz.cn.service.QwenServiceTest - No active profile set, falling back to 1 default profile: "default"
+2025-12-30 16:27:21.537 [main] INFO  xw.szbz.cn.service.QwenServiceTest - Started QwenServiceTest in 0.092 seconds (process running for 2.664)
+2025-12-30 16:27:28.107 [main] INFO  o.s.t.c.support.AnnotationConfigContextLoaderUtils - Could not detect default configuration classes for test class [xw.szbz.cn.service.LiuRenServiceTest]: LiuRenServiceTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2025-12-30 16:27:28.108 [main] INFO  o.s.b.t.context.SpringBootTestContextBootstrapper - Found @SpringBootConfiguration xw.szbz.cn.SzbzApiApplication for test class xw.szbz.cn.service.LiuRenServiceTest
+2025-12-30 16:27:28.117 [main] INFO  o.s.t.c.support.AnnotationConfigContextLoaderUtils - Could not detect default configuration classes for test class [xw.szbz.cn.service.Ph8ServiceTest]: Ph8ServiceTest does not declare any static, non-private, non-final, nested classes annotated with @Configuration.
+2025-12-30 16:27:28.117 [main] INFO  o.s.b.t.context.SpringBootTestContextBootstrapper - Found @SpringBootConfiguration xw.szbz.cn.SzbzApiApplication for test class xw.szbz.cn.service.Ph8ServiceTest
+2025-12-30 16:27:28.126 [main] INFO  xw.szbz.cn.service.Ph8ServiceTest - Starting Ph8ServiceTest using Java 17.0.17 with PID 33897 (started by wang in /Users/wang/Documents/cursor_demo/szbz/szbz)
+2025-12-30 16:27:28.126 [main] INFO  xw.szbz.cn.service.Ph8ServiceTest - No active profile set, falling back to 1 default profile: "default"
+2025-12-30 16:27:28.220 [main] INFO  xw.szbz.cn.service.Ph8ServiceTest - Started Ph8ServiceTest in 0.101 seconds (process running for 9.347)

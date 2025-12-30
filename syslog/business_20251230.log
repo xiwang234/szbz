@@ -1,0 +1,13 @@
+{"id":1767083240740928,"requestTime":"2025-12-30 16:27:20","requestIp":"127.0.0.1","responseCode":401,"responseMessage":"Token无效或已过期","processingTime":26}
+{"id":1767083240791345,"openId":"test-openid","requestTime":"2025-12-30 16:27:20","requestIp":"127.0.0.1","responseCode":400,"responseMessage":"签名验证失败，参数可能被篡改","processingTime":3}
+{"id":1767083240807312,"openId":"test-female-openid","requestTime":"2025-12-30 16:27:20","requestIp":"127.0.0.1","responseCode":400,"responseMessage":"性别只能是'男'或'女'","processingTime":1}
+{"id":1767083240814153,"openId":"test-openid","requestTime":"2025-12-30 16:27:20","requestIp":"127.0.0.1","responseCode":400,"responseMessage":"出生年份不能为空","processingTime":1}
+{"id":1767083240817298,"openId":"test-openid","requestTime":"2025-12-30 16:27:20","requestIp":"127.0.0.1","responseCode":400,"responseMessage":"占问事项不能为空","processingTime":1}
+{"id":1767083240834501,"openId":"test-openid","requestTime":"2025-12-30 16:27:20","requestIp":"127.0.0.1","responseCode":400,"responseMessage":"性别不能为空","processingTime":1}
+{"id":1767083240839314,"openId":"test-openid","requestTime":"2025-12-30 16:27:20","requestIp":"127.0.0.1","responseCode":400,"responseMessage":"性别只能是'男'或'女'","processingTime":1}
+{"id":1767083240841081,"openId":"test-openid","requestTime":"2025-12-30 16:27:20","requestIp":"127.0.0.1","responseCode":400,"responseMessage":"缺少时间戳参数","processingTime":0}
+{"id":1767083240845058,"requestTime":"2025-12-30 16:27:20","requestIp":"127.0.0.1","responseCode":401,"responseMessage":"未提供认证Token","processingTime":0}
+{"id":1767083240848503,"openId":"test-openid","requestTime":"2025-12-30 16:27:20","requestIp":"127.0.0.1","responseCode":400,"responseMessage":"缺少签名参数","processingTime":1}
+{"id":1767083240850771,"openId":"test-openid-123456","requestTime":"2025-12-30 16:27:20","requestIp":"127.0.0.1","responseCode":400,"responseMessage":"性别只能是'男'或'女'","processingTime":0}
+{"id":1767083240855223,"openId":"test-openid","requestTime":"2025-12-30 16:27:20","requestIp":"127.0.0.1","responseCode":400,"responseMessage":"请求已过期，时间戳超过2秒","processingTime":0}
+{"id":1767083240860212,"openId":"test-openid","requestTime":"2025-12-30 16:27:20","requestIp":"127.0.0.1","responseCode":400,"responseMessage":"性别只能是'男'或'女'","processingTime":1}

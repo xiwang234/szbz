@@ -30,6 +30,7 @@ import xw.szbz.cn.service.BaZiService;
 import xw.szbz.cn.service.BusinessLogService;
 import xw.szbz.cn.service.GeminiService;
 import xw.szbz.cn.service.LiuRenService;
+import xw.szbz.cn.service.RateLimitService;
 import xw.szbz.cn.service.WeChatService;
 import xw.szbz.cn.util.JwtUtil;
 import xw.szbz.cn.util.PromptTemplateUtil;
@@ -52,9 +53,10 @@ public class BaZiController {
     private final ObjectMapper objectMapper;
     private final PromptTemplateUtil promptTemplateUtil;
     private final LiuRenService liuRenService;
+    private final RateLimitService rateLimitService;
 
     @Autowired
-    public BaZiController(BaZiService baZiService, 
+    public BaZiController(BaZiService baZiService,
                           GeminiService geminiService,
                           WeChatService weChatService,
                           JwtUtil jwtUtil,
@@ -63,7 +65,8 @@ public class BaZiController {
                           BusinessLogService businessLogService,
                           ObjectMapper objectMapper,
                           PromptTemplateUtil promptTemplateUtil,
-                          LiuRenService liuRenService) {
+                          LiuRenService liuRenService,
+                          RateLimitService rateLimitService) {
         this.baZiService = baZiService;
         this.geminiService = geminiService;
         this.weChatService = weChatService;
@@ -74,6 +77,7 @@ public class BaZiController {
         this.objectMapper = objectMapper;
         this.promptTemplateUtil = promptTemplateUtil;
         this.liuRenService = liuRenService;
+        this.rateLimitService = rateLimitService;
     }
 
     /**
@@ -167,6 +171,15 @@ public class BaZiController {
                 return buildLiuRenErrorResponse(businessLog, startTime, 401, "Token解析失败");
             }
 
+            // ===== Step 1.5: 检查调用频率限制 =====
+            if (!rateLimitService.checkLimit(openId, "wenji")) {
+                int used = rateLimitService.getUsedCount(openId, "wenji");
+                int limit = rateLimitService.getDailyLimit("wenji");
+                String errorMsg = String.format("已达到每日调用上限(%d/%d次)，请明天再试", used, limit);
+                System.out.println("限流拦截: OpenId=" + openId + ", " + errorMsg);
+                return buildLiuRenErrorResponse(businessLog, startTime, 429, errorMsg);
+            }
+
             // ===== Step 2: 验证时间戳 =====
             if (timestamp == null) {
                 return buildLiuRenErrorResponse(businessLog, startTime, 400, "缺少时间戳参数");
@@ -221,12 +234,20 @@ public class BaZiController {
             // ===== Step 9: 调用Gemini AI进行预测 =====
             String aiPrediction = geminiService.generateContent(prompt);
             sleep(5000);
+
+            // ===== Step 9.5: 增加调用计数 =====
+            int newCount = rateLimitService.incrementCount(openId, "wenji");
+            int remaining = rateLimitService.getRemainingCount(openId, "wenji");
+            System.out.println("调用计数更新: OpenId=" + openId + ", 已使用=" + newCount + ", 剩余=" + remaining);
+
             // ===== Step 10: 构建响应 =====
             Map<String, Object> responseData = new HashMap<>();
             responseData.put("prediction", aiPrediction);
             responseData.put("courseInfo", courseInfo);
             responseData.put("question", request.getQuestion());
             responseData.put("birthInfo", birthInfo);
+            responseData.put("usedCount", newCount);
+            responseData.put("remainingCount", remaining);
 
             // 记录业务日志
             businessLog.setResponseCode(200);

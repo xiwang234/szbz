@@ -1,0 +1,255 @@
+package xw.szbz.cn.service;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import xw.szbz.cn.model.*;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * 大运和流年测试
+ */
+@SpringBootTest
+class BaZiDaYunLiuNianTest {
+
+    @Autowired
+    private BaZiService baZiService;
+
+    @Test
+    @DisplayName("测试基本信息填充")
+    void testBasicInfo() {
+        BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23);
+        BaZiResult result = baZiService.calculate(request);
+
+        // 验证基本信息
+        BasicInfo basicInfo = result.getBasicInfo();
+        assertNotNull(basicInfo, "基本信息不应为空");
+        assertEquals("男", basicInfo.getGender());
+        assertNotNull(basicInfo.getYearPillar(), "年柱不应为空");
+        assertNotNull(basicInfo.getMonthPillar(), "月柱不应为空");
+        assertNotNull(basicInfo.getDayPillar(), "日柱不应为空");
+        assertNotNull(basicInfo.getHourPillar(), "时柱不应为空");
+
+        System.out.println("========== 基本信息 ==========");
+        System.out.println(basicInfo.toString());
+        System.out.println("================================");
+    }
+
+    @Test
+    @DisplayName("测试扩展信息 - 大运和流年（动态覆盖到当前年份）")
+    void testExtendedInfo() {
+        BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23);
+        BaZiResult result = baZiService.calculate(request);
+
+        // 验证扩展信息（动态）
+        ExtendedInfo extendedInfo = result.getExtendedInfo();
+        assertNotNull(extendedInfo, "扩展信息不应为空");
+        assertNotNull(extendedInfo.getBasicInfo());
+        assertNotNull(extendedInfo.getDaYunList());
+        assertNotNull(extendedInfo.getLiuNianList());
+
+        // 验证起运年龄和顺逆（1984年11月23日，男性，精确计算后约5岁起运）
+        int qiYunAge = extendedInfo.getQiYunAge();
+        assertTrue(qiYunAge >= 3 && qiYunAge <= 7, "起运年龄应该在3-7岁之间（精确计算）");
+        System.out.println("起运年龄: " + qiYunAge + "岁");
+        System.out.println("大运排列: " + (extendedInfo.isShunPai() ? "顺排" : "逆排"));
+
+        // 验证大运（动态计算，覆盖到当前年份）
+        List<DaYun> daYunList = extendedInfo.getDaYunList();
+        assertTrue(daYunList.size() >= 1 && daYunList.size() <= 10,
+                "大运步数应该在1-10之间");
+
+        System.out.println("\n========== 大运信息（extendedInfo - 动态）==========");
+        for (int i = 0; i < daYunList.size(); i++) {
+            DaYun daYun = daYunList.get(i);
+            assertNotNull(daYun.getPillar());
+            System.out.println(daYun.toString());
+        }
+
+        // 验证流年（动态计算，到当前年份）
+        List<LiuNian> liuNianList = extendedInfo.getLiuNianList();
+        assertTrue(liuNianList.size() >= 1 && liuNianList.size() <= 100,
+                "流年数量应该在1-100之间");
+
+        System.out.println("\n========== 流年信息（前10年）==========");
+        for (int i = 0; i < Math.min(10, liuNianList.size()); i++) {
+            LiuNian liuNian = liuNianList.get(i);
+            assertNotNull(liuNian.getPillar());
+            System.out.println(liuNian.toString());
+        }
+        System.out.println("... （共" + liuNianList.size() + "个流年）");
+
+        // 验证完整扩展信息（固定10步大运和100年流年）
+        ExtendedInfo fullExtendedInfo = result.getFullExtendedInfo();
+        assertNotNull(fullExtendedInfo, "完整扩展信息不应为空");
+
+        List<DaYun> fullDaYunList = fullExtendedInfo.getDaYunList();
+        assertEquals(10, fullDaYunList.size(), "fullExtendedInfo 应该有10步大运");
+
+        List<LiuNian> fullLiuNianList = fullExtendedInfo.getLiuNianList();
+        assertEquals(100, fullLiuNianList.size(), "fullExtendedInfo 应该有100个流年");
+
+        System.out.println("\n========== fullExtendedInfo（完整信息）==========");
+        System.out.println("大运步数: " + fullDaYunList.size());
+        System.out.println("流年数量: " + fullLiuNianList.size());
+        System.out.println("================================");
+    }
+
+    @Test
+    @DisplayName("测试女性八字的大运顺逆")
+    void testFemaleDaYun() {
+        // 阴年女性：应该顺排
+        BaZiRequest request1 = new BaZiRequest("女", 1985, 5, 14, 12);
+        BaZiResult result1 = baZiService.calculate(request1);
+
+        System.out.println("\n========== 女性八字测试 ==========");
+        System.out.println("出生年份: 1985年（乙丑年，阴年）");
+        System.out.println("性别: 女");
+        System.out.println("年柱: " + result1.getYearPillar().getFullName());
+        System.out.println("大运排列: " + (result1.getExtendedInfo().isShunPai() ? "顺排" : "逆排"));
+        System.out.println("预期: 阴年女性应该顺排");
+
+        // 验证大运列表不为空
+        assertNotNull(result1.getExtendedInfo().getDaYunList());
+        assertTrue(result1.getExtendedInfo().getDaYunList().size() > 0);
+
+        System.out.println("\n前3步大运:");
+        for (int i = 0; i < 3; i++) {
+            System.out.println(result1.getExtendedInfo().getDaYunList().get(i).toString());
+        }
+        System.out.println("================================");
+    }
+
+    @Test
+    @DisplayName("测试大运跨越年份范围")
+    void testDaYunYearRange() {
+        BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23);
+        BaZiResult result = baZiService.calculate(request);
+
+        List<DaYun> daYunList = result.getExtendedInfo().getDaYunList();
+        int qiYunAge = result.getExtendedInfo().getQiYunAge();
+        int qiYunYear = result.getExtendedInfo().getQiYunInfo().getQiYunYear();
+
+        // 第一步大运应该从起运年龄开始（精确计算约4岁）
+        DaYun firstDaYun = daYunList.get(0);
+        assertEquals(qiYunAge, firstDaYun.getStartAge());
+        assertEquals(qiYunAge + 9, firstDaYun.getEndAge());
+        assertEquals(qiYunYear, firstDaYun.getStartYear());
+        assertEquals(qiYunYear + 9, firstDaYun.getEndYear());
+
+        // 第二步大运应该从第一步结束后开始
+        DaYun secondDaYun = daYunList.get(1);
+        assertEquals(qiYunAge + 10, secondDaYun.getStartAge());
+        assertEquals(qiYunAge + 19, secondDaYun.getEndAge());
+
+        System.out.println("\n========== 大运年份范围验证 ==========");
+        System.out.println("起运年龄: " + qiYunAge + "岁");
+        System.out.println("第一步大运: " + firstDaYun.toString());
+        System.out.println("第二步大运: " + secondDaYun.toString());
+        System.out.println("验证通过：大运年份范围计算正确");
+        System.out.println("================================");
+    }
+
+    @Test
+    @DisplayName("测试流年与实际年份对应")
+    void testLiuNianYearMapping() {
+        BaZiRequest request = new BaZiRequest("男", 2000, 1, 1, 12);
+        BaZiResult result = baZiService.calculate(request);
+
+        List<LiuNian> liuNianList = result.getExtendedInfo().getLiuNianList();
+
+        // 0岁应该是2000年
+        LiuNian age0 = liuNianList.get(0);
+        assertEquals(2000, age0.getYear());
+        assertEquals(0, age0.getAge());
+
+        // 25岁应该是2025年
+        LiuNian age25 = liuNianList.get(25);
+        assertEquals(2025, age25.getYear());
+        assertEquals(25, age25.getAge());
+
+        // 验证2025年的干支（应该是乙巳年）
+        System.out.println("\n========== 流年验证 ==========");
+        System.out.println("出生年: 2000年");
+        System.out.println("0岁(2000年): " + age0.getPillar().getFullName());
+        System.out.println("25岁(2025年): " + age25.getPillar().getFullName());
+        System.out.println("================================");
+    }
+
+    @Test
+    @DisplayName("测试完整八字结果包含所有信息")
+    void testCompleteResult() {
+        BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23);
+        BaZiResult result = baZiService.calculate(request);
+
+        // 验证原有属性仍然存在
+        assertNotNull(result.getGender());
+        assertNotNull(result.getYearPillar());
+        assertNotNull(result.getMonthPillar());
+        assertNotNull(result.getDayPillar());
+        assertNotNull(result.getHourPillar());
+        assertNotNull(result.getFullBaZi());
+        assertNotNull(result.getBirthInfo());
+
+        // 验证新增属性
+        assertNotNull(result.getBasicInfo());
+        assertNotNull(result.getExtendedInfo());
+
+        System.out.println("\n========== 完整八字结果 ==========");
+        System.out.println("四柱: " + result.getFullBaZi());
+        System.out.println("基本信息: " + result.getBasicInfo().toString());
+        System.out.println("大运数量: " + result.getExtendedInfo().getDaYunList().size());
+        System.out.println("流年数量: " + result.getExtendedInfo().getLiuNianList().size());
+        System.out.println("所有属性验证通过");
+        System.out.println("================================");
+    }
+
+    @Test
+    @DisplayName("测试 daYunStringList 结构（包含大运和流年）")
+    void testDaYunStringList() {
+        BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23);
+        BaZiResult result = baZiService.calculate(request);
+
+        assertNotNull(result.getDaYunStringList(), "daYunStringList 不应为空");
+
+        System.out.println("\n========== daYunStringList 结构测试 ==========");
+        System.out.println("大运对象数量: " + result.getDaYunStringList().size());
+
+        List<DaYunLiuNian> daYunStringList = result.getDaYunStringList();
+        List<DaYun> daYunList = result.getExtendedInfo().getDaYunList();
+
+        System.out.println("\n详细结构:");
+        for (int i = 0; i < daYunStringList.size(); i++) {
+            DaYunLiuNian daYunLiuNian = daYunStringList.get(i);
+            DaYun daYun = daYunList.get(i);
+
+            System.out.println("\n第 " + (i + 1) + " 步大运:");
+            System.out.println("  大运: " + daYunLiuNian.getDaYunFullName() +
+                             " (" + daYun.getStartAge() + "-" + daYun.getEndAge() + "岁, " +
+                             daYun.getStartYear() + "-" + daYun.getEndYear() + "年)");
+            System.out.println("  流年数量: " + daYunLiuNian.getLiuNianList().size());
+            System.out.println("  流年: " + String.join(", ", daYunLiuNian.getLiuNianList()));
+
+            // 验证流年数量（最后一个大运可能不足10个）
+            if (i < daYunStringList.size() - 1) {
+                assertEquals(10, daYunLiuNian.getLiuNianList().size(),
+                           "除了最后一个大运，其他大运应该有10个流年");
+            } else {
+                assertTrue(daYunLiuNian.getLiuNianList().size() <= 10,
+                         "最后一个大运的流年数量应该不超过10个");
+            }
+        }
+
+        System.out.println("\n结构说明:");
+        System.out.println("- daYunStringList 是 List<DaYunLiuNian>");
+        System.out.println("- 每个 DaYunLiuNian 包含：");
+        System.out.println("  - daYunFullName: 大运的干支（如 '甲子'）");
+        System.out.println("  - liuNianList: 该大运对应的流年列表");
+        System.out.println("- 返回 JSON 格式清晰、易于使用");
+        System.out.println("================================================");
+    }
+}

@@ -1,8 +1,9 @@
 package xw.szbz.cn.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import xw.szbz.cn.model.BaZiResult;
 
@@ -78,7 +79,7 @@ public class GeminiService {
      */
     public String generateContent(String prompt) {
         if (apiKey == null || apiKey.isEmpty()) {
-            throw new IllegalStateException("Gemini API key 未配置。请在 application.properties 中设置 gemini.api.key");
+            throw new IllegalStateException("key 未配置");
         }
 
         try {
@@ -97,7 +98,10 @@ public class GeminiService {
             // return response.text();
             
             // 临时返回（实际应该返回 response.text()）
-            return "这是六壬预测的模拟结果。实际使用时请取消注释上面的代码以调用真实的Gemini API。";
+            return "这片藏在林间的小小兽巢，正进行着一场温和的模拟验证。就像幼兽在巢穴中练习捕猎与避险的本领，而非真正踏入危机四伏的荒野，"
+            +"这里的每一次数据往来、每一项信息记录，都只是对生存流程的模拟演练。林间的草木枯荣、鸟兽踪迹，都只是验证的背景素材，"
+            +"不会被真正留存为生存档案；那些看似繁复的互动，也如同小兽的嬉戏，只为确认每一步动作的顺畅，而非开启真实的生存挑战。当演练结束，"
+            +"这片 “兽巢” 便完成了它的使命，不会留下任何关乎真实荒野的印记。";
 
         } catch (Exception e) {
             throw new RuntimeException("调用 Gemini API 失败: " + e.getMessage(), e);

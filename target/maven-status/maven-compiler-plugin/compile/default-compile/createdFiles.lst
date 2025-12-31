@@ -21,6 +21,7 @@ xw/szbz/cn/service/BaZiService$1.class
 xw/szbz/cn/service/BaZiService.class
 xw/szbz/cn/model/DaYun.class
 xw/szbz/cn/config/WeChatConfig.class
+xw/szbz/cn/config/SecurityFilter.class
 xw/szbz/cn/model/Pillar.class
 xw/szbz/cn/model/BaZiResult$BirthInfo.class
 xw/szbz/cn/util/PromptTemplateUtil.class

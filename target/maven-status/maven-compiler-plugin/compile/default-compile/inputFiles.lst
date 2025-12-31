@@ -17,6 +17,7 @@
 /Users/wang/Documents/cursor_demo/szbz/szbz/src/main/java/xw/szbz/cn/model/QiYunInfo.java
 /Users/wang/Documents/cursor_demo/szbz/szbz/src/main/java/xw/szbz/cn/model/BasicInfo.java
 /Users/wang/Documents/cursor_demo/szbz/szbz/src/main/java/xw/szbz/cn/util/SignatureUtil.java
+/Users/wang/Documents/cursor_demo/szbz/szbz/src/main/java/xw/szbz/cn/config/SecurityFilter.java
 /Users/wang/Documents/cursor_demo/szbz/szbz/src/main/java/xw/szbz/cn/model/BusinessLog.java
 /Users/wang/Documents/cursor_demo/szbz/szbz/src/main/java/xw/szbz/cn/SzbzApiApplication.java
 /Users/wang/Documents/cursor_demo/szbz/szbz/src/main/java/xw/szbz/cn/util/JwtUtil.java

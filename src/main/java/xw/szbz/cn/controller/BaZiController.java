@@ -1,13 +1,11 @@
 package xw.szbz.cn.controller;
 
-import static java.lang.Thread.sleep;
-
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -17,6 +15,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.servlet.http.HttpServletRequest;
+import xw.szbz.cn.entity.JiTu;
+import xw.szbz.cn.entity.User;
+import xw.szbz.cn.entity.WenJi;
 import xw.szbz.cn.model.ApiResponse;
 import xw.szbz.cn.model.BaZiAnalysisResponse;
 import xw.szbz.cn.model.BaZiRequest;
@@ -25,12 +26,13 @@ import xw.szbz.cn.model.BusinessLog;
 import xw.szbz.cn.model.LiuRenRequest;
 import xw.szbz.cn.model.LoginRequest;
 import xw.szbz.cn.model.LoginResponse;
-import xw.szbz.cn.service.BaZiCacheService;
+import xw.szbz.cn.repository.JiTuRepository;
+import xw.szbz.cn.repository.UserRepository;
+import xw.szbz.cn.repository.WenJiRepository;
 import xw.szbz.cn.service.BaZiService;
 import xw.szbz.cn.service.BusinessLogService;
 import xw.szbz.cn.service.GeminiService;
 import xw.szbz.cn.service.LiuRenService;
-import xw.szbz.cn.service.RateLimitService;
 import xw.szbz.cn.service.WeChatService;
 import xw.szbz.cn.util.JwtUtil;
 import xw.szbz.cn.util.PromptTemplateUtil;
@@ -48,12 +50,13 @@ public class BaZiController {
     private final WeChatService weChatService;
     private final JwtUtil jwtUtil;
     private final SignatureUtil signatureUtil;
-    private final BaZiCacheService cacheService;
     private final BusinessLogService businessLogService;
     private final ObjectMapper objectMapper;
     private final PromptTemplateUtil promptTemplateUtil;
     private final LiuRenService liuRenService;
-    private final RateLimitService rateLimitService;
+    private final UserRepository userRepository;
+    private final WenJiRepository wenJiRepository;
+    private final JiTuRepository jiTuRepository;
 
     @Autowired
     public BaZiController(BaZiService baZiService,
@@ -61,23 +64,25 @@ public class BaZiController {
                           WeChatService weChatService,
                           JwtUtil jwtUtil,
                           SignatureUtil signatureUtil,
-                          BaZiCacheService cacheService,
                           BusinessLogService businessLogService,
                           ObjectMapper objectMapper,
                           PromptTemplateUtil promptTemplateUtil,
                           LiuRenService liuRenService,
-                          RateLimitService rateLimitService) {
+                          UserRepository userRepository,
+                          WenJiRepository wenJiRepository,
+                          JiTuRepository jiTuRepository) {
         this.baZiService = baZiService;
         this.geminiService = geminiService;
         this.weChatService = weChatService;
         this.jwtUtil = jwtUtil;
         this.signatureUtil = signatureUtil;
-        this.cacheService = cacheService;
         this.businessLogService = businessLogService;
         this.objectMapper = objectMapper;
         this.promptTemplateUtil = promptTemplateUtil;
         this.liuRenService = liuRenService;
-        this.rateLimitService = rateLimitService;
+        this.userRepository = userRepository;
+        this.wenJiRepository = wenJiRepository;
+        this.jiTuRepository = jiTuRepository;
     }
 
     /**
@@ -110,6 +115,13 @@ public class BaZiController {
             
             // 计算过期时间
             Long expiresAt = System.currentTimeMillis() + 86400000L; // 24小时后
+
+            // 保存用户信息到数据库（如果不存在）
+            if (!userRepository.existsByOpenId(openId)) {
+                User user = new User(openId, System.currentTimeMillis());
+                userRepository.save(user);
+                System.out.println("新用户已保存到数据库: " + openId);
+            }
 
             // 构建响应（不返回openId，保护用户隐私）
             LoginResponse response = new LoginResponse(token, expiresAt);
@@ -171,15 +183,6 @@ public class BaZiController {
                 return buildLiuRenErrorResponse(businessLog, startTime, 401, "Token解析失败");
             }
 
-            // ===== Step 1.5: 检查调用频率限制 =====
-            if (!rateLimitService.checkLimit(openId, "wenji")) {
-                int used = rateLimitService.getUsedCount(openId, "wenji");
-                int limit = rateLimitService.getDailyLimit("wenji");
-                String errorMsg = String.format("已达到每日调用上限(%d/%d次)，请明天再试", used, limit);
-                System.out.println("限流拦截: OpenId=" + openId + ", " + errorMsg);
-                return buildLiuRenErrorResponse(businessLog, startTime, 429, errorMsg);
-            }
-
             // ===== Step 2: 验证时间戳 =====
             if (timestamp == null) {
                 return buildLiuRenErrorResponse(businessLog, startTime, 400, "缺少时间戳参数");
@@ -208,7 +211,7 @@ public class BaZiController {
                 return buildLiuRenErrorResponse(businessLog, startTime, 400, "性别不能为空");
             }
             if (!request.getGender().equals("male") && !request.getGender().equals("female")) {
-                return buildLiuRenErrorResponse(businessLog, startTime, 400, "性别只能是'男'或'女'");
+                return buildLiuRenErrorResponse(businessLog, startTime, 400, "性别只能是'male'或'female'");
             }
 
             // ===== Step 5: 生成课传信息（根据当前时间排出农历四柱及大六壬天将） =====
@@ -233,21 +236,26 @@ public class BaZiController {
 
             // ===== Step 9: 调用Gemini AI进行预测 =====
             String aiPrediction = geminiService.generateContent(prompt);
-            sleep(5000);
 
-            // ===== Step 9.5: 增加调用计数 =====
-            int newCount = rateLimitService.incrementCount(openId, "wenji");
-            int remaining = rateLimitService.getRemainingCount(openId, "wenji");
-            System.out.println("调用计数更新: OpenId=" + openId + ", 已使用=" + newCount + ", 剩余=" + remaining);
+            // ===== Step 10: 保存到问吉表 =====
+            WenJi wenJi = new WenJi(
+                openId,
+                request.getQuestion(),
+                request.getBackground(),
+                request.getBirthYear(),
+                request.getGender(),
+                aiPrediction,
+                System.currentTimeMillis()
+            );
+            wenJiRepository.save(wenJi);
+            System.out.println("问吉记录已保存到数据库");
 
-            // ===== Step 10: 构建响应 =====
+            // ===== Step 11: 构建响应 =====
             Map<String, Object> responseData = new HashMap<>();
             responseData.put("prediction", aiPrediction);
             responseData.put("courseInfo", courseInfo);
             responseData.put("question", request.getQuestion());
             responseData.put("birthInfo", birthInfo);
-            responseData.put("usedCount", newCount);
-            responseData.put("remainingCount", remaining);
 
             // 记录业务日志
             businessLog.setResponseCode(200);
@@ -341,33 +349,57 @@ public class BaZiController {
             // 验证基本参数
             validateRequest(request);
 
-            // ===== Step 4: 检查Caffeine缓存（使用 openId 作为Key） =====
-            BaZiAnalysisResponse cachedResponse = cacheService.get(openId);
+            // ===== Step 4: 查询吉途表缓存（根据gender、year、month、day、hour） =====
+            Optional<JiTu> cachedJiTu = jiTuRepository.findFirstByGenderAndYearAndMonthAndDayAndHourOrderByCreateTimeDesc(
+                request.getGender(),
+                request.getYear(),
+                request.getMonth(),
+                request.getDay(),
+                request.getHour()
+            );
+
+            Object aiAnalysis;
             
-            if (cachedResponse != null) {
-                // 缓存命中，直接返回
-                System.out.println("缓存命中: " + openId);
-                businessLog.setCacheHit(true);
-                businessLog.setAiAnalysis(objectMapper.writeValueAsString(cachedResponse.getAiAnalysis()));
+            if (cachedJiTu.isPresent()) {
+                // 找到缓存数据，直接返回
+                System.out.println("从数据库缓存中获取吉途数据，性别: " + request.getGender() + 
+                    ", 出生日期: " + request.getYear() + "-" + request.getMonth() + "-" + 
+                    request.getDay() + " " + request.getHour() + "时");
                 
-                return buildSuccessResponseWithoutToken(businessLog, startTime, cachedResponse);
+                String cachedResult = cachedJiTu.get().getDefaultResult();
+                aiAnalysis = objectMapper.readValue(cachedResult, Object.class);
+                businessLog.setAiAnalysis(cachedResult);
+                
+            } else {
+                // 没有缓存，需要计算和AI分析
+                System.out.println("数据库中无缓存，执行八字计算和AI分析");
+                
+                // ===== Step 5: 计算八字（包含大运、流年） =====
+                BaZiResult baZiResult = baZiService.calculate(request);
+                businessLog.setBaziResult(objectMapper.writeValueAsString(baZiResult));
+
+                // ===== Step 6: 使用 Gemini AI 分析（返回JSON格式） =====
+                aiAnalysis = geminiService.analyzeBaZi(baZiResult);
+                String aiAnalysisJson = objectMapper.writeValueAsString(aiAnalysis);
+                businessLog.setAiAnalysis(aiAnalysisJson);
+
+                // ===== Step 7: 保存到吉途表 =====
+                JiTu jiTu = new JiTu(
+                    openId,
+                    request.getGender(),
+                    request.getYear(),
+                    request.getMonth(),
+                    request.getDay(),
+                    request.getHour(),
+                    aiAnalysisJson,
+                    System.currentTimeMillis()
+                );
+                jiTuRepository.save(jiTu);
+                System.out.println("吉途记录已保存到数据库");
             }
 
-            businessLog.setCacheHit(false);
-
-            // ===== Step 5: 计算八字（包含大运、流年） =====
-            BaZiResult baZiResult = baZiService.calculate(request);
-            businessLog.setBaziResult(objectMapper.writeValueAsString(baZiResult));
-
-            // ===== Step 6: 使用 Gemini AI 分析（返回JSON格式） =====
-            Object aiAnalysis = geminiService.analyzeBaZi(baZiResult);
-            businessLog.setAiAnalysis(objectMapper.writeValueAsString(aiAnalysis));
-
-            // ===== Step 7: 构建响应数据（仅包含AI分析结果） =====
+            // ===== Step 8: 构建响应数据（仅包含AI分析结果） =====
             BaZiAnalysisResponse responseData = new BaZiAnalysisResponse(aiAnalysis);
-
-            // ===== Step 8: 将结果存入Caffeine缓存，过期时间3天 =====
-            cacheService.put(openId, responseData);
 
             // ===== Step 9: 返回JSON格式（不再返回Token） =====
             return buildSuccessResponseWithoutToken(businessLog, startTime, responseData);
@@ -380,19 +412,6 @@ public class BaZiController {
         }
     }
 
-
-
-    /**
-     * 获取缓存统计信息
-     */
-    @GetMapping("/cache/stats")
-    public ResponseEntity<Map<String, Object>> getCacheStats() {
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("cacheStats", cacheService.getCacheStats());
-        stats.put("logDirectory", businessLogService.getLogDirectoryPath());
-        return ResponseEntity.ok(stats);
-    }
-    
     private void validateRequest(BaZiRequest request) {
         if (request.getGender() == null || request.getGender().isEmpty()) {
             throw new IllegalArgumentException("性别不能为空");
@@ -409,18 +428,6 @@ public class BaZiController {
         if (request.getHour() < 0 || request.getHour() > 23) {
             throw new IllegalArgumentException("小时必须在0-23之间");
         }
-    }
-
-    /**
-     * 清空所有缓存
-     */
-    @PostMapping("/cache/clear")
-    public ResponseEntity<Map<String, Object>> clearCache() {
-        cacheService.invalidateAll();
-        Map<String, Object> result = new HashMap<>();
-        result.put("message", "所有缓存已清空");
-        result.put("stats", cacheService.getCacheStats());
-        return ResponseEntity.ok(result);
     }
 
     /**

@@ -1,17 +1,5 @@
 package xw.szbz.cn.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.google.genai.Client;
-import com.google.genai.types.GenerateContentResponse;
-
-import xw.szbz.cn.model.BaZiResult;
-
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -20,6 +8,18 @@ import java.io.StringWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.genai.Client;
+import com.google.genai.types.GenerateContentResponse;
+
+import xw.szbz.cn.model.BaZiResult;
 
 /**
  * Gemini AI 分析服务
@@ -30,8 +30,8 @@ public class GeminiService {
 
     private static final Logger logger = LoggerFactory.getLogger(GeminiService.class);
 
-    @Value("${gemini.api.key:}")
-    private String apiKey;
+    // @Value("${gemini.api.key:}")
+    private String apiKey = "AIzaSyCiHEasvBLaciq-eia5RFSb_QcTJ6EIWmM";
 
     @Value("${gemini.model:gemini-2.0-flash-exp}")
     private String modelName;
@@ -47,7 +47,6 @@ public class GeminiService {
      * @throws RuntimeException      如果调用 Gemini API 失败
      */
     public Object analyzeBaZi(BaZiResult baZiResult) {
-        apiKey = "AIzaSyA9aKhNqwaYN0bsDqzqi9cmHL84WpM-xX8";
         logger.info("开始分析八字，模型: {}", modelName);
         logger.debug("API Key 前缀: {}...", apiKey != null && apiKey.length() > 10 ? apiKey.substring(0, 10) : "未设置");
         
@@ -124,10 +123,10 @@ public class GeminiService {
      */
     public String generateContent(String prompt) {
         logger.info("开始调用 Gemini API，模型: {}, 提示词长度: {}", modelName, prompt != null ? prompt.length() : 0);
-        
+        apiKey = "AIzaSyCiHEasvBLaciq-eia5RFSb_QcTJ6EIWmM";
         if (apiKey == null || apiKey.isEmpty()) {
-            logger.error("Gemini API key 未配置");
-            throw new IllegalStateException("Gemini API key 未配置。请在 application.properties 中设置 gemini.api.key");
+            logger.error("key 未配置");
+            throw new IllegalStateException("key 未配置。请设置key");
         }
 
         HttpURLConnection conn = null;
@@ -330,26 +329,4 @@ public class GeminiService {
         return prompt.toString();
     }
 
-    /**
-     * 构建发送给 Gemini 的提示词（原有方法，保持向后兼容）
-     */
-    @Deprecated
-    private String buildPrompt(BaZiResult baZiResult) {
-        StringBuilder prompt = new StringBuilder();
-        prompt.append("请作为一位专业的命理大师，结合知识库的内容规则和案例分析逻辑，详细分析以下八字排盘结果：\n\n");
-        prompt.append("完整八字：").append(baZiResult.getBasicInfo().toString()).append("\n\n");
-        prompt.append("截止今年的大运和流年：").append(baZiResult.getDaYunStringList().toString()).append("\n\n");
-        prompt.append("请从以下几个方面进行详细分析：\n");
-        prompt.append("1. 格局分析：格局情况\n");
-        prompt.append("2. 学历情况：分析学历情况\n");
-        prompt.append("3. 用神喜忌：确定该八字的用神和忌神\n");
-        prompt.append("4. 性格特点：根据八字推断性格特征\n");
-        prompt.append("5. 事业财运：分析事业和财运方面的特点\n");
-        prompt.append("6. 健康建议：给出健康方面的注意事项\n");
-        prompt.append("7. 职业情况：可能从事的职业\n");
-        prompt.append("8. 综合评价：给出总体的命理评价\n\n");
-        prompt.append("请用专业、通俗易懂的语言进行分析，字数控制在800字以内。");
-        System.out.println("$$$$$$$$$$$$$$$$$$" + prompt.toString());
-        return prompt.toString();
-    }
 }

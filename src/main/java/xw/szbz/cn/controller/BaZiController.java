@@ -6,6 +6,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -48,6 +50,8 @@ import xw.szbz.cn.util.SignatureUtil;
 @RequestMapping("/api/bazi")
 public class BaZiController {
 
+    private static final Logger logger = LoggerFactory.getLogger(BaZiController.class);
+    
     private final BaZiService baZiService;
     private final GeminiService geminiService;
     private final WeChatService weChatService;
@@ -257,8 +261,11 @@ public class BaZiController {
                 birthInfo
             );
 
+            logger.info("六壬预测提示词: " + prompt);
+
             // ===== Step 10: 调用Gemini AI进行预测 =====
             String aiPrediction = geminiService.generateContent(prompt);
+            logger.info("六壬预测结果: " + aiPrediction);
 
             // ===== Step 11: 保存到问吉表 =====
             WenJi wenJi = new WenJi(
@@ -286,11 +293,12 @@ public class BaZiController {
             businessLog.setProcessingTime(System.currentTimeMillis() - startTime);
             businessLogService.log(businessLog);
 
+            logger.info("六壬预测响应: " + responseData);
+
             return ResponseEntity.ok(ApiResponse.success(responseData));
 
         } catch (Exception e) {
             System.err.println("六壬预测服务器错误: " + e.getMessage());
-            e.printStackTrace();
             return buildLiuRenErrorResponse(businessLog, startTime, 500, "服务器内部错误: " + e.getMessage());
         }
     }

@@ -1,5 +1,7 @@
 package xw.szbz.cn.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +15,8 @@ import xw.szbz.cn.model.BaZiResult;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -23,6 +27,8 @@ import java.nio.charset.StandardCharsets;
  */
 @Service
 public class GeminiService {
+
+    private static final Logger logger = LoggerFactory.getLogger(GeminiService.class);
 
     @Value("${gemini.api.key:}")
     private String apiKey;
@@ -42,41 +48,68 @@ public class GeminiService {
      */
     public Object analyzeBaZi(BaZiResult baZiResult) {
         apiKey = "AIzaSyA9aKhNqwaYN0bsDqzqi9cmHL84WpM-xX8";
-        System.out.println("GeminiService.apiKey: " + apiKey);
+        logger.info("开始分析八字，模型: {}", modelName);
+        logger.debug("API Key 前缀: {}...", apiKey != null && apiKey.length() > 10 ? apiKey.substring(0, 10) : "未设置");
+        
         if (apiKey == null || apiKey.isEmpty()) {
+            logger.error("Gemini API key 未配置");
             throw new IllegalStateException("Gemini API key 未配置。请在 application.properties 中设置 gemini.api.key");
         }
         
+        long startTime = System.currentTimeMillis();
+        
         try {
             // 初始化 Gemini 客户端
+            logger.debug("正在初始化 Gemini 客户端...");
             Client client = Client.builder()
                     .apiKey(apiKey)
                     .build();
 
             // 构建提示词（要求返回JSON格式）
             String prompt = buildPromptWithJsonFormat(baZiResult);
+            logger.debug("提示词长度: {} 字符", prompt.length());
 
             // 调用 Gemini API
+            logger.info("正在调用 Gemini API 进行八字分析...");
             GenerateContentResponse response = client.models.generateContent(
                     modelName,
                     prompt,
                     null);
 
+            long requestTime = System.currentTimeMillis() - startTime;
+            logger.info("Gemini API 调用完成，耗时: {} ms", requestTime);
+
             // 获取生成的文本
             String responseText = response.text();
-            // String responseText = "test api";
+            logger.debug("响应文本长度: {} 字符", responseText != null ? responseText.length() : 0);
+            
             // 尝试解析为JSON对象
             try {
                 // 提取JSON部分（如果响应中包含markdown代码块）
                 String jsonText = extractJson(responseText);
-                return objectMapper.readValue(jsonText, Object.class);
+                Object result = objectMapper.readValue(jsonText, Object.class);
+                logger.info("八字分析成功，返回 JSON 格式结果");
+                return result;
             } catch (Exception e) {
                 // 如果解析失败，返回原始文本
-                System.err.println("无法将响应解析为JSON，返回原始文本: " + e.getMessage());
+                logger.warn("无法将响应解析为JSON，返回原始文本: {}", e.getMessage());
                 return responseText;
             }
 
         } catch (Exception e) {
+            long totalTime = System.currentTimeMillis() - startTime;
+            
+            // 记录完整的异常堆栈信息
+            logger.error("八字分析失败，耗时: {} ms", totalTime);
+            logger.error("异常类型: {}", e.getClass().getName());
+            logger.error("异常信息: {}", e.getMessage());
+            
+            // 记录完整堆栈
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            e.printStackTrace(pw);
+            logger.error("完整堆栈信息:\n{}", sw.toString());
+            
             throw new RuntimeException("调用 Gemini API 失败: " + e.getMessage(), e);
         }
     }
@@ -90,17 +123,24 @@ public class GeminiService {
      * @throws RuntimeException      如果调用 Gemini API 失败
      */
     public String generateContent(String prompt) {
+        logger.info("开始调用 Gemini API，模型: {}, 提示词长度: {}", modelName, prompt != null ? prompt.length() : 0);
+        
         if (apiKey == null || apiKey.isEmpty()) {
+            logger.error("Gemini API key 未配置");
             throw new IllegalStateException("Gemini API key 未配置。请在 application.properties 中设置 gemini.api.key");
         }
 
         HttpURLConnection conn = null;
+        long startTime = System.currentTimeMillis();
+        
         try {
             // 构建请求 URL
             String urlString = String.format(
                 "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s",
                 modelName, apiKey
             );
+            
+            logger.debug("请求 URL: {}", urlString.replace(apiKey, "***"));
             
             URL url = new URL(urlString);
             conn = (HttpURLConnection) url.openConnection();
@@ -118,6 +158,8 @@ public class GeminiService {
                 escapeJson(prompt)
             );
             
+            logger.debug("请求体长度: {} bytes", jsonInputString.getBytes(StandardCharsets.UTF_8).length);
+            
             // 发送请求
             try (OutputStream os = conn.getOutputStream()) {
                 byte[] input = jsonInputString.getBytes(StandardCharsets.UTF_8);
@@ -126,6 +168,9 @@ public class GeminiService {
 
             // 获取响应
             int responseCode = conn.getResponseCode();
+            long requestTime = System.currentTimeMillis() - startTime;
+            
+            logger.info("Gemini API 响应码: {}, 耗时: {} ms", responseCode, requestTime);
             
             if (responseCode == HttpURLConnection.HTTP_OK) {
                 // 读取响应内容
@@ -140,7 +185,12 @@ public class GeminiService {
 
                 // 解析响应 JSON，提取文本内容
                 String responseBody = response.toString();
-                return extractTextFromHttpResponse(responseBody);
+                logger.debug("响应内容长度: {} bytes", responseBody.length());
+                
+                String result = extractTextFromHttpResponse(responseBody);
+                logger.info("Gemini API 调用成功，返回文本长度: {}", result != null ? result.length() : 0);
+                
+                return result;
 
             } else {
                 // 读取错误信息
@@ -152,10 +202,31 @@ public class GeminiService {
                         errorResponse.append(inputLine);
                     }
                 }
-                throw new RuntimeException("Gemini API 返回错误码 " + responseCode + ": " + errorResponse.toString());
+                
+                String errorMsg = "Gemini API 返回错误码 " + responseCode + ": " + errorResponse.toString();
+                logger.error("Gemini API 调用失败: {}", errorMsg);
+                logger.error("请求详情 - 模型: {}, 提示词长度: {}, 耗时: {} ms", 
+                    modelName, prompt != null ? prompt.length() : 0, requestTime);
+                
+                throw new RuntimeException(errorMsg);
             }
 
         } catch (Exception e) {
+            long totalTime = System.currentTimeMillis() - startTime;
+            
+            // 记录完整的异常堆栈信息
+            logger.error("调用 Gemini API 发生异常，耗时: {} ms", totalTime);
+            logger.error("异常类型: {}", e.getClass().getName());
+            logger.error("异常信息: {}", e.getMessage());
+            logger.error("请求参数 - 模型: {}, 提示词长度: {}", 
+                modelName, prompt != null ? prompt.length() : 0);
+            
+            // 记录完整堆栈
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            e.printStackTrace(pw);
+            logger.error("完整堆栈信息:\n{}", sw.toString());
+            
             throw new RuntimeException("调用 Gemini API 失败: " + e.getMessage(), e);
         } finally {
             if (conn != null) {
@@ -179,15 +250,17 @@ public class GeminiService {
                 if (parts.isArray() && parts.size() > 0) {
                     String text = parts.get(0).path("text").asText();
                     if (text != null && !text.isEmpty()) {
+                        logger.debug("成功从响应中提取文本内容");
                         return text;
                     }
                 }
             }
             
             // 如果无法解析，返回原始响应
+            logger.warn("无法从标准结构中提取文本，返回原始响应");
             return jsonResponse;
         } catch (Exception e) {
-            System.err.println("解析 Gemini 响应失败: " + e.getMessage());
+            logger.error("解析 Gemini 响应失败: {}", e.getMessage(), e);
             return jsonResponse;
         }
     }

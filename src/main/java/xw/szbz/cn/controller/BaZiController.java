@@ -1,10 +1,13 @@
 package xw.szbz.cn.controller;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -57,6 +60,16 @@ public class BaZiController {
     private final UserRepository userRepository;
     private final WenJiRepository wenJiRepository;
     private final JiTuRepository jiTuRepository;
+    
+    // 限流配置
+    @Value("${rate.limit.enabled:true}")
+    private boolean rateLimitEnabled;
+    
+    @Value("${rate.limit.wenji.daily:5}")
+    private int wenjiDailyLimit;
+    
+    @Value("${rate.limit.jitu.daily:5}")
+    private int jituDailyLimit;
 
     @Autowired
     public BaZiController(BaZiService baZiService,
@@ -200,6 +213,16 @@ public class BaZiController {
                 return buildLiuRenErrorResponse(businessLog, startTime, 400, "签名验证失败，参数可能被篡改");
             }
 
+            // ===== Step 4: 限流检查（问吉接口） =====
+            if (rateLimitEnabled) {
+                long todayCount = getTodaySubmitCount(openId, wenJiRepository);
+                if (todayCount >= wenjiDailyLimit) {
+                    String errorMsg = String.format("今日提交次数已达上限（%d/%d），请明天再试", todayCount, wenjiDailyLimit);
+                    return buildLiuRenErrorResponse(businessLog, startTime, 429, errorMsg);
+                }
+                System.out.println(String.format("问吉限流检查通过，今日已提交: %d/%d", todayCount, wenjiDailyLimit));
+            }
+
             // ===== Step 4: 验证参数 =====
             if (request.getQuestion() == null || request.getQuestion().isEmpty()) {
                 return buildLiuRenErrorResponse(businessLog, startTime, 400, "占问事项不能为空");
@@ -214,19 +237,19 @@ public class BaZiController {
                 return buildLiuRenErrorResponse(businessLog, startTime, 400, "性别只能是'male'或'female'");
             }
 
-            // ===== Step 5: 生成课传信息（根据当前时间排出农历四柱及大六壬天将） =====
+            // ===== Step 6: 生成课传信息（根据当前时间排出农历四柱及大六壬天将） =====
             String courseInfo = liuRenService.generateCourseInfo();
             System.out.println("生成课传信息: " + courseInfo);
 
-            // ===== Step 6: 将出生年份转换为干支年份 =====
+            // ===== Step 7: 将出生年份转换为干支年份 =====
             String ganZhiYear = liuRenService.convertBirthYearToGanZhi(request.getBirthYear());
             System.out.println("干支年份: " + ganZhiYear);
 
-            // ===== Step 7: 组合干支信息和性别生成birthInfo =====
+            // ===== Step 8: 组合干支信息和性别生成birthInfo =====
             String birthInfo = liuRenService.generateBirthInfo(request.getBirthYear(), request.getGender());
             System.out.println("出生信息: " + birthInfo);
 
-            // ===== Step 8: 渲染提示词模板 =====
+            // ===== Step 9: 渲染提示词模板 =====
             String prompt = promptTemplateUtil.renderLiuRenTemplate(
                 courseInfo,
                 request.getQuestion(),
@@ -234,10 +257,10 @@ public class BaZiController {
                 birthInfo
             );
 
-            // ===== Step 9: 调用Gemini AI进行预测 =====
+            // ===== Step 10: 调用Gemini AI进行预测 =====
             String aiPrediction = geminiService.generateContent(prompt);
 
-            // ===== Step 10: 保存到问吉表 =====
+            // ===== Step 11: 保存到问吉表 =====
             WenJi wenJi = new WenJi(
                 openId,
                 request.getQuestion(),
@@ -250,7 +273,7 @@ public class BaZiController {
             wenJiRepository.save(wenJi);
             System.out.println("问吉记录已保存到数据库");
 
-            // ===== Step 11: 构建响应 =====
+            // ===== Step 12: 构建响应 =====
             Map<String, Object> responseData = new HashMap<>();
             responseData.put("prediction", aiPrediction);
             responseData.put("courseInfo", courseInfo);
@@ -349,7 +372,17 @@ public class BaZiController {
             // 验证基本参数
             validateRequest(request);
 
-            // ===== Step 4: 查询吉途表缓存（根据gender、year、month、day、hour） =====
+            // ===== Step 4: 限流检查（吉途接口） =====
+            if (rateLimitEnabled) {
+                long todayCount = getTodaySubmitCount(openId, jiTuRepository);
+                if (todayCount >= jituDailyLimit) {
+                    String errorMsg = String.format("今日提交次数已达上限（%d/%d），请明天再试", todayCount, jituDailyLimit);
+                    return buildErrorResponse(businessLog, startTime, 429, errorMsg);
+                }
+                System.out.println(String.format("吉途限流检查通过，今日已提交: %d/%d", todayCount, jituDailyLimit));
+            }
+
+            // ===== Step 5: 查询吉途表缓存（根据gender、year、month、day、hour） =====
             Optional<JiTu> cachedJiTu = jiTuRepository.findFirstByGenderAndYearAndMonthAndDayAndHourOrderByCreateTimeDesc(
                 request.getGender(),
                 request.getYear(),
@@ -374,16 +407,16 @@ public class BaZiController {
                 // 没有缓存，需要计算和AI分析
                 System.out.println("数据库中无缓存，执行八字计算和AI分析");
                 
-                // ===== Step 5: 计算八字（包含大运、流年） =====
+                // ===== Step 6: 计算八字（包含大运、流年） =====
                 BaZiResult baZiResult = baZiService.calculate(request);
                 businessLog.setBaziResult(objectMapper.writeValueAsString(baZiResult));
 
-                // ===== Step 6: 使用 Gemini AI 分析（返回JSON格式） =====
+                // ===== Step 7: 使用 Gemini AI 分析（返回JSON格式） =====
                 aiAnalysis = geminiService.analyzeBaZi(baZiResult);
                 String aiAnalysisJson = objectMapper.writeValueAsString(aiAnalysis);
                 businessLog.setAiAnalysis(aiAnalysisJson);
 
-                // ===== Step 7: 保存到吉途表 =====
+                // ===== Step 8: 保存到吉途表 =====
                 JiTu jiTu = new JiTu(
                     openId,
                     request.getGender(),
@@ -398,10 +431,10 @@ public class BaZiController {
                 System.out.println("吉途记录已保存到数据库");
             }
 
-            // ===== Step 8: 构建响应数据（仅包含AI分析结果） =====
+            // ===== Step 9: 构建响应数据（仅包含AI分析结果） =====
             BaZiAnalysisResponse responseData = new BaZiAnalysisResponse(aiAnalysis);
 
-            // ===== Step 9: 返回JSON格式（不再返回Token） =====
+            // ===== Step 10: 返回JSON格式（不再返回Token） =====
             return buildSuccessResponseWithoutToken(businessLog, startTime, responseData);
 
         } catch (IllegalArgumentException e) {
@@ -497,5 +530,26 @@ public class BaZiController {
             ip = ip.split(",")[0].trim();
         }
         return ip;
+    }
+
+    /**
+     * 获取今日提交次数（通用方法）
+     * @param openId 用户openId
+     * @param repository Repository接口（WenJiRepository或JiTuRepository）
+     * @return 今日提交次数
+     */
+    private long getTodaySubmitCount(String openId, Object repository) {
+        // 获取今日起始和结束时间戳
+        LocalDate today = LocalDate.now(ZoneId.systemDefault());
+        long startOfDay = today.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();
+        long endOfDay = today.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli() - 1;
+        
+        // 根据repository类型调用对应的查询方法
+        if (repository instanceof WenJiRepository) {
+            return ((WenJiRepository) repository).countByOpenIdAndCreateTimeBetween(openId, startOfDay, endOfDay);
+        } else if (repository instanceof JiTuRepository) {
+            return ((JiTuRepository) repository).countByOpenIdAndCreateTimeBetween(openId, startOfDay, endOfDay);
+        }
+        return 0;
     }
 }

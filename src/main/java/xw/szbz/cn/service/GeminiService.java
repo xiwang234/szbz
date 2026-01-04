@@ -4,8 +4,18 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.google.genai.Client;
+import com.google.genai.types.GenerateContentResponse;
 
 import xw.szbz.cn.model.BaZiResult;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Gemini AI 分析服务
@@ -14,7 +24,7 @@ import xw.szbz.cn.model.BaZiResult;
 @Service
 public class GeminiService {
 
-    @Value("${yesCode.api.key:}")
+    @Value("${gemini.api.key:}")
     private String apiKey;
 
     @Value("${gemini.model:gemini-2.0-flash-exp}")
@@ -31,28 +41,30 @@ public class GeminiService {
      * @throws RuntimeException      如果调用 Gemini API 失败
      */
     public Object analyzeBaZi(BaZiResult baZiResult) {
+        apiKey = "AIzaSyA9aKhNqwaYN0bsDqzqi9cmHL84WpM-xX8";
+        System.out.println("GeminiService.apiKey: " + apiKey);
         if (apiKey == null || apiKey.isEmpty()) {
             throw new IllegalStateException("Gemini API key 未配置。请在 application.properties 中设置 gemini.api.key");
         }
-
+        
         try {
             // 初始化 Gemini 客户端
-            // Client client = Client.builder()
-            //         .apiKey(apiKey)
-            //         .build();
+            Client client = Client.builder()
+                    .apiKey(apiKey)
+                    .build();
 
             // 构建提示词（要求返回JSON格式）
-            // String prompt = buildPromptWithJsonFormat(baZiResult);
+            String prompt = buildPromptWithJsonFormat(baZiResult);
 
             // 调用 Gemini API
-            // GenerateContentResponse response = client.models.generateContent(
-            //         modelName,
-            //         prompt,
-            //         null);
+            GenerateContentResponse response = client.models.generateContent(
+                    modelName,
+                    prompt,
+                    null);
 
             // 获取生成的文本
-            // String responseText = response.text();
-            String responseText = "test api";
+            String responseText = response.text();
+            // String responseText = "test api";
             // 尝试解析为JSON对象
             try {
                 // 提取JSON部分（如果响应中包含markdown代码块）
@@ -70,7 +82,7 @@ public class GeminiService {
     }
 
     /**
-     * 通用文本生成方法（用于六壬预测等场景）
+     * 通用文本生成方法（用于六壬预测等场景）- 使用 HTTP 直接调用
      *
      * @param prompt 提示词
      * @return Gemini AI 生成的文本
@@ -79,33 +91,119 @@ public class GeminiService {
      */
     public String generateContent(String prompt) {
         if (apiKey == null || apiKey.isEmpty()) {
-            throw new IllegalStateException("key 未配置");
+            throw new IllegalStateException("Gemini API key 未配置。请在 application.properties 中设置 gemini.api.key");
         }
 
+        HttpURLConnection conn = null;
         try {
-            // 初始化 Gemini 客户端
-            // Client client = Client.builder()
-            //         .apiKey(apiKey)
-            //         .build();
-
-            // 调用 Gemini API
-            // GenerateContentResponse response = client.models.generateContent(
-            //         modelName,
-            //         prompt,
-            //         null);
-
-            // 返回生成的文本
-            // return response.text();
+            // 构建请求 URL
+            String urlString = String.format(
+                "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s",
+                modelName, apiKey
+            );
             
-            // 临时返回（实际应该返回 response.text()）
-            return "这片藏在林间的小小兽巢，正进行着一场温和的模拟验证。就像幼兽在巢穴中练习捕猎与避险的本领，而非真正踏入危机四伏的荒野，"
-            +"这里的每一次数据往来、每一项信息记录，都只是对生存流程的模拟演练。林间的草木枯荣、鸟兽踪迹，都只是验证的背景素材，"
-            +"不会被真正留存为生存档案；那些看似繁复的互动，也如同小兽的嬉戏，只为确认每一步动作的顺畅，而非开启真实的生存挑战。当演练结束，"
-            +"这片 “兽巢” 便完成了它的使命，不会留下任何关乎真实荒野的印记。";
+            URL url = new URL(urlString);
+            conn = (HttpURLConnection) url.openConnection();
+            
+            // 设置请求方法和头部
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(30000);
+            conn.setReadTimeout(30000);
+
+            // 构建请求体
+            String jsonInputString = String.format(
+                "{\"contents\": [{\"parts\": [{\"text\": \"%s\"}]}]}",
+                escapeJson(prompt)
+            );
+            
+            // 发送请求
+            try (OutputStream os = conn.getOutputStream()) {
+                byte[] input = jsonInputString.getBytes(StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
+            }
+
+            // 获取响应
+            int responseCode = conn.getResponseCode();
+            
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                // 读取响应内容
+                StringBuilder response = new StringBuilder();
+                try (BufferedReader in = new BufferedReader(
+                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                    String inputLine;
+                    while ((inputLine = in.readLine()) != null) {
+                        response.append(inputLine);
+                    }
+                }
+
+                // 解析响应 JSON，提取文本内容
+                String responseBody = response.toString();
+                return extractTextFromHttpResponse(responseBody);
+
+            } else {
+                // 读取错误信息
+                StringBuilder errorResponse = new StringBuilder();
+                try (BufferedReader errorReader = new BufferedReader(
+                    new InputStreamReader(conn.getErrorStream(), StandardCharsets.UTF_8))) {
+                    String inputLine;
+                    while ((inputLine = errorReader.readLine()) != null) {
+                        errorResponse.append(inputLine);
+                    }
+                }
+                throw new RuntimeException("Gemini API 返回错误码 " + responseCode + ": " + errorResponse.toString());
+            }
 
         } catch (Exception e) {
             throw new RuntimeException("调用 Gemini API 失败: " + e.getMessage(), e);
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
         }
+    }
+
+    /**
+     * 从 HTTP 响应 JSON 中提取文本内容
+     */
+    private String extractTextFromHttpResponse(String jsonResponse) {
+        try {
+            JsonNode root = objectMapper.readTree(jsonResponse);
+            JsonNode candidates = root.path("candidates");
+            
+            if (candidates.isArray() && candidates.size() > 0) {
+                JsonNode content = candidates.get(0).path("content");
+                JsonNode parts = content.path("parts");
+                
+                if (parts.isArray() && parts.size() > 0) {
+                    String text = parts.get(0).path("text").asText();
+                    if (text != null && !text.isEmpty()) {
+                        return text;
+                    }
+                }
+            }
+            
+            // 如果无法解析，返回原始响应
+            return jsonResponse;
+        } catch (Exception e) {
+            System.err.println("解析 Gemini 响应失败: " + e.getMessage());
+            return jsonResponse;
+        }
+    }
+
+    /**
+     * 转义 JSON 字符串中的特殊字符
+     */
+    private String escapeJson(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text.replace("\\", "\\\\")
+                   .replace("\"", "\\\"")
+                   .replace("\n", "\\n")
+                   .replace("\r", "\\r")
+                   .replace("\t", "\\t");
     }
 
     /**

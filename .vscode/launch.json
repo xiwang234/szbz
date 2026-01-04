@@ -3,6 +3,20 @@
   "configurations": [
     {
       "type": "java",
+      "name": "GeminiHttpTest",
+      "request": "launch",
+      "mainClass": "xw.szbz.cn.GeminiHttpTest",
+      "projectName": "szbzApi"
+    },
+    {
+      "type": "java",
+      "name": "QuickGeminiTest",
+      "request": "launch",
+      "mainClass": "xw.szbz.cn.QuickGeminiTest",
+      "projectName": "szbzApi"
+    },
+    {
+      "type": "java",
       "name": "Debug GeminiAnalysisExample",
       "request": "launch",
       "mainClass": "xw.szbz.cn.GeminiAnalysisExample",

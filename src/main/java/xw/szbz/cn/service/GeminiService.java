@@ -31,7 +31,7 @@ public class GeminiService {
     private static final Logger logger = LoggerFactory.getLogger(GeminiService.class);
 
     // @Value("${gemini.api.key:}")
-    private String apiKey = "AIzaSyCiHEasvBLaciq-eia5RFSb_QcTJ6EIWmM";
+    private String apiKey = "";
 
     @Value("${gemini.model:gemini-2.0-flash-exp}")
     private String modelName;
@@ -48,8 +48,7 @@ public class GeminiService {
      */
     public Object analyzeBaZi(BaZiResult baZiResult) {
         logger.info("开始分析八字，模型: {}", modelName);
-        logger.debug("API Key 前缀: {}...", apiKey != null && apiKey.length() > 10 ? apiKey.substring(0, 10) : "未设置");
-        
+        apiKey = System.getenv("GEMINI_API_KEY");
         if (apiKey == null || apiKey.isEmpty()) {
             logger.error("Gemini API key 未配置");
             throw new IllegalStateException("Gemini API key 未配置。请在 application.properties 中设置 gemini.api.key");
@@ -123,7 +122,7 @@ public class GeminiService {
      */
     public String generateContent(String prompt) {
         logger.info("开始调用 Gemini API，模型: {}, 提示词长度: {}", modelName, prompt != null ? prompt.length() : 0);
-        apiKey = "AIzaSyCiHEasvBLaciq-eia5RFSb_QcTJ6EIWmM";
+        apiKey = System.getenv("GEMINI_API_KEY");
         if (apiKey == null || apiKey.isEmpty()) {
             logger.error("key 未配置");
             throw new IllegalStateException("key 未配置。请设置key");
@@ -148,8 +147,8 @@ public class GeminiService {
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
             conn.setDoOutput(true);
-            conn.setConnectTimeout(30000);
-            conn.setReadTimeout(30000);
+            conn.setConnectTimeout(9000000);
+            conn.setReadTimeout(9000000);
 
             // 构建请求体
             String jsonInputString = String.format(

@@ -121,8 +121,7 @@ public class GeminiService {
      */
     public String generateContent(String prompt) {
         logger.info("开始调用 Gemini API，模型: {}, 提示词长度: {}", modelName, prompt != null ? prompt.length() : 0);
-        // apiKey = System.getenv("GEMINI_API_KEY");
-        apiKey = "AIzaSyBWNljJuzOdpP-gIURgQeegd4451knecaw";
+        apiKey = System.getenv("GEMINI_API_KEY");
         if (apiKey == null || apiKey.isEmpty()) {
             logger.error("key 未配置");
             throw new IllegalStateException("key 未配置。请设置key");
@@ -362,7 +361,6 @@ public class GeminiService {
      */
     public void generateContentStream(String prompt, java.util.function.Consumer<String> chunkCallback) {
         logger.info("开始流式调用 Gemini API，模型: {}, 提示词长度: {}", modelName, prompt != null ? prompt.length() : 0);
-        apiKey = "AIzaSyBWNljJuzOdpP-gIURgQeegd4451knecaw";
         
         if (apiKey == null || apiKey.isEmpty()) {
             logger.error("Gemini API key 未配置");

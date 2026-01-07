@@ -1,17 +1,5 @@
 package xw.szbz.cn.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.google.genai.Client;
-import com.google.genai.types.GenerateContentResponse;
-
-import xw.szbz.cn.model.BaZiResult;
-
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
@@ -20,6 +8,18 @@ import java.io.StringWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.genai.Client;
+import com.google.genai.types.GenerateContentResponse;
+
+import xw.szbz.cn.model.BaZiResult;
 
 /**
  * Gemini AI 分析服务
@@ -30,7 +30,7 @@ public class GeminiService {
 
     private static final Logger logger = LoggerFactory.getLogger(GeminiService.class);
 
-    @Value("${gemini.api.key:}")
+    // @Value("${gemini.api.key:}")
     private String apiKey;
 
     @Value("${gemini.model:gemini-2.0-flash-exp}")
@@ -124,7 +124,8 @@ public class GeminiService {
      */
     public String generateContent(String prompt) {
         logger.info("开始调用 Gemini API，模型: {}, 提示词长度: {}", modelName, prompt != null ? prompt.length() : 0);
-        
+        // apiKey = System.getenv("GEMINI_API_KEY");
+        apiKey = "AIzaSyBWNljJuzOdpP-gIURgQeegd4451knecaw";
         if (apiKey == null || apiKey.isEmpty()) {
             logger.error("Gemini API key 未配置");
             throw new IllegalStateException("Gemini API key 未配置。请在 application.properties 中设置 gemini.api.key");
@@ -352,4 +353,150 @@ public class GeminiService {
         System.out.println("$$$$$$$$$$$$$$$$$$" + prompt.toString());
         return prompt.toString();
     }
+
+    /**
+     * 流式生成内容（使用 HTTP 直接调用流式 API）
+     * 
+     * @param prompt 提示词
+     * @param chunkCallback 文本片段回调函数
+     * @throws IllegalStateException 如果 API key 未配置
+     * @throws RuntimeException 如果调用 API 失败
+     */
+    public void generateContentStream(String prompt, java.util.function.Consumer<String> chunkCallback) {
+        logger.info("开始流式调用 Gemini API，模型: {}, 提示词长度: {}", modelName, prompt != null ? prompt.length() : 0);
+        apiKey = "AIzaSyBWNljJuzOdpP-gIURgQeegd4451knecaw";
+        
+        if (apiKey == null || apiKey.isEmpty()) {
+            logger.error("Gemini API key 未配置");
+            throw new IllegalStateException("Gemini API key 未配置。请在 application.properties 中设置 gemini.api.key");
+        }
+
+        HttpURLConnection conn = null;
+        long startTime = System.currentTimeMillis();
+        
+        try {
+            // 构建请求 URL（使用流式端点）
+            String urlString = String.format(
+                "https://generativelanguage.googleapis.com/v1beta/models/%s:streamGenerateContent?key=%s&alt=sse",
+                modelName, apiKey
+            );
+            
+            logger.debug("流式请求 URL: {}", urlString.replace(apiKey, "***"));
+            
+            URL url = new URL(urlString);
+            conn = (HttpURLConnection) url.openConnection();
+            
+            // 设置请求方法和头部
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            conn.setRequestProperty("Accept", "text/event-stream");
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(30000);
+            conn.setReadTimeout(180000); // 3分钟读取超时
+
+            // 构建请求体
+            String jsonInputString = String.format(
+                "{\"contents\": [{\"parts\": [{\"text\": \"%s\"}]}]}",
+                escapeJson(prompt)
+            );
+            
+            logger.debug("请求体长度: {} bytes", jsonInputString.getBytes(StandardCharsets.UTF_8).length);
+            
+            // 发送请求
+            try (OutputStream os = conn.getOutputStream()) {
+                byte[] input = jsonInputString.getBytes(StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
+            }
+
+            // 获取响应码
+            int responseCode = conn.getResponseCode();
+            logger.info("Gemini 流式 API 响应码: {}", responseCode);
+            
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                logger.info("开始接收流式数据...");
+                
+                // 读取流式响应（SSE 格式）
+                try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                    
+                    String line;
+                    StringBuilder eventData = new StringBuilder();
+                    int chunkCount = 0;
+                    
+                    while ((line = reader.readLine()) != null) {
+                        // SSE 格式：data: {...}
+                        if (line.startsWith("data: ")) {
+                            String jsonData = line.substring(6).trim();
+                            
+                            // 跳过空数据
+                            if (jsonData.isEmpty() || jsonData.equals("[DONE]")) {
+                                continue;
+                            }
+                            
+                            try {
+                                // 解析 JSON 提取文本
+                                JsonNode root = objectMapper.readTree(jsonData);
+                                JsonNode candidates = root.path("candidates");
+                                
+                                if (candidates.isArray() && candidates.size() > 0) {
+                                    JsonNode content = candidates.get(0).path("content");
+                                    JsonNode parts = content.path("parts");
+                                    
+                                    if (parts.isArray() && parts.size() > 0) {
+                                        String chunk = parts.get(0).path("text").asText();
+                                        if (chunk != null && !chunk.isEmpty()) {
+                                            chunkCount++;
+                                            logger.debug("收到第 {} 个流式片段: {} 字符", chunkCount, chunk.length());
+                                            chunkCallback.accept(chunk);
+                                        }
+                                    }
+                                }
+                            } catch (Exception e) {
+                                logger.warn("解析流式数据片段失败: {}", e.getMessage());
+                            }
+                        }
+                    }
+                    
+                    long totalTime = System.currentTimeMillis() - startTime;
+                    logger.info("流式生成完成，共接收 {} 个片段，总耗时: {} ms", chunkCount, totalTime);
+                }
+
+            } else {
+                // 读取错误信息
+                StringBuilder errorResponse = new StringBuilder();
+                try (BufferedReader errorReader = new BufferedReader(
+                    new InputStreamReader(conn.getErrorStream(), StandardCharsets.UTF_8))) {
+                    String inputLine;
+                    while ((inputLine = errorReader.readLine()) != null) {
+                        errorResponse.append(inputLine);
+                    }
+                }
+                
+                String errorMsg = "Gemini 流式 API 返回错误码 " + responseCode + ": " + errorResponse.toString();
+                logger.error("流式调用失败: {}", errorMsg);
+                throw new RuntimeException(errorMsg);
+            }
+
+        } catch (Exception e) {
+            long totalTime = System.currentTimeMillis() - startTime;
+            
+            // 记录完整的异常堆栈信息
+            logger.error("流式调用 Gemini API 发生异常，耗时: {} ms", totalTime);
+            logger.error("异常类型: {}", e.getClass().getName());
+            logger.error("异常信息: {}", e.getMessage());
+            
+            // 记录完整堆栈
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            e.printStackTrace(pw);
+            logger.error("完整堆栈信息:\n{}", sw.toString());
+            
+            throw new RuntimeException("调用 Gemini API 失败: " + e.getMessage(), e);
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+    }
 }
+

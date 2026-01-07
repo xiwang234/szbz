@@ -46,6 +46,19 @@
     "source.organizeImports": "explicit"
   },
   
+  // 终端编码配置（修复中文乱码）
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.profiles.windows": {
+    "PowerShell": {
+      "source": "PowerShell",
+      "args": ["-NoExit", "-Command", "chcp 65001"]
+    },
+    "Command Prompt": {
+      "path": "C:\\WINDOWS\\System32\\cmd.exe",
+      "args": ["/K", "chcp 65001"]
+    }
+  },
+  
   // 文件排除（提升性能）
   "files.exclude": {
     "**/.git": true,

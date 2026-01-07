@@ -31,7 +31,11 @@ public class GeminiService {
     private static final Logger logger = LoggerFactory.getLogger(GeminiService.class);
 
     // @Value("${gemini.api.key:}")
+<<<<<<< HEAD
     private String apiKey;
+=======
+    private String apiKey = "";
+>>>>>>> 3fc5ab0c2ea3b16690d40f4c660e176304b4428b
 
     @Value("${gemini.model:gemini-2.0-flash-exp}")
     private String modelName;
@@ -47,10 +51,8 @@ public class GeminiService {
      * @throws RuntimeException      如果调用 Gemini API 失败
      */
     public Object analyzeBaZi(BaZiResult baZiResult) {
-        apiKey = "AIzaSyA9aKhNqwaYN0bsDqzqi9cmHL84WpM-xX8";
         logger.info("开始分析八字，模型: {}", modelName);
-        logger.debug("API Key 前缀: {}...", apiKey != null && apiKey.length() > 10 ? apiKey.substring(0, 10) : "未设置");
-        
+        apiKey = System.getenv("GEMINI_API_KEY");
         if (apiKey == null || apiKey.isEmpty()) {
             logger.error("Gemini API key 未配置");
             throw new IllegalStateException("Gemini API key 未配置。请在 application.properties 中设置 gemini.api.key");
@@ -124,11 +126,15 @@ public class GeminiService {
      */
     public String generateContent(String prompt) {
         logger.info("开始调用 Gemini API，模型: {}, 提示词长度: {}", modelName, prompt != null ? prompt.length() : 0);
+<<<<<<< HEAD
         // apiKey = System.getenv("GEMINI_API_KEY");
         apiKey = "AIzaSyBWNljJuzOdpP-gIURgQeegd4451knecaw";
+=======
+        apiKey = System.getenv("GEMINI_API_KEY");
+>>>>>>> 3fc5ab0c2ea3b16690d40f4c660e176304b4428b
         if (apiKey == null || apiKey.isEmpty()) {
-            logger.error("Gemini API key 未配置");
-            throw new IllegalStateException("Gemini API key 未配置。请在 application.properties 中设置 gemini.api.key");
+            logger.error("key 未配置");
+            throw new IllegalStateException("key 未配置。请设置key");
         }
 
         HttpURLConnection conn = null;
@@ -150,8 +156,8 @@ public class GeminiService {
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
             conn.setDoOutput(true);
-            conn.setConnectTimeout(30000);
-            conn.setReadTimeout(30000);
+            conn.setConnectTimeout(9000000);
+            conn.setReadTimeout(9000000);
 
             // 构建请求体
             String jsonInputString = String.format(
@@ -331,6 +337,7 @@ public class GeminiService {
         return prompt.toString();
     }
 
+<<<<<<< HEAD
     /**
      * 构建发送给 Gemini 的提示词（原有方法，保持向后兼容）
      */
@@ -498,5 +505,7 @@ public class GeminiService {
             }
         }
     }
+=======
+>>>>>>> 3fc5ab0c2ea3b16690d40f4c660e176304b4428b
 }
 

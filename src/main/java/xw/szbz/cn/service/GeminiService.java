@@ -30,12 +30,7 @@ public class GeminiService {
 
     private static final Logger logger = LoggerFactory.getLogger(GeminiService.class);
 
-    // @Value("${gemini.api.key:}")
-<<<<<<< HEAD
     private String apiKey;
-=======
-    private String apiKey = "";
->>>>>>> 3fc5ab0c2ea3b16690d40f4c660e176304b4428b
 
     @Value("${gemini.model:gemini-2.0-flash-exp}")
     private String modelName;
@@ -126,12 +121,8 @@ public class GeminiService {
      */
     public String generateContent(String prompt) {
         logger.info("开始调用 Gemini API，模型: {}, 提示词长度: {}", modelName, prompt != null ? prompt.length() : 0);
-<<<<<<< HEAD
         // apiKey = System.getenv("GEMINI_API_KEY");
         apiKey = "AIzaSyBWNljJuzOdpP-gIURgQeegd4451knecaw";
-=======
-        apiKey = System.getenv("GEMINI_API_KEY");
->>>>>>> 3fc5ab0c2ea3b16690d40f4c660e176304b4428b
         if (apiKey == null || apiKey.isEmpty()) {
             logger.error("key 未配置");
             throw new IllegalStateException("key 未配置。请设置key");
@@ -337,7 +328,7 @@ public class GeminiService {
         return prompt.toString();
     }
 
-<<<<<<< HEAD
+
     /**
      * 构建发送给 Gemini 的提示词（原有方法，保持向后兼容）
      */
@@ -505,7 +496,5 @@ public class GeminiService {
             }
         }
     }
-=======
->>>>>>> 3fc5ab0c2ea3b16690d40f4c660e176304b4428b
 }
 

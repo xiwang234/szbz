@@ -12,7 +12,7 @@
         <encoder>
             <pattern>${LOG_PATTERN}</pattern>
             <!-- Windows 控制台使用 GBK 编码，避免中文乱码 -->
-            <charset>GBK</charset>
+            <charset>UTF-8</charset>
         </encoder>
     </appender>
 

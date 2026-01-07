@@ -1,11 +1,11 @@
 package xw.szbz.cn.service;
 
+import java.time.LocalDateTime;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import xw.szbz.cn.enums.DiZhi;
-import xw.szbz.cn.model.Pillar;
 
-import java.time.LocalDateTime;
+import xw.szbz.cn.model.Pillar;
 
 /**
  * 大六壬计算服务
@@ -220,6 +220,10 @@ public class LiuRenService {
      */
     public String generateBirthInfo(int birthYear, String gender) {
         String ganZhiYear = convertBirthYearToGanZhi(birthYear);
-        return ganZhiYear + gender + "命";
+        if(gender.equals("male")) {
+            return ganZhiYear + "男命";
+        } else {
+            return ganZhiYear + "女命";
+        }
     }
 }

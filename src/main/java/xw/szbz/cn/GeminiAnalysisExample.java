@@ -1,6 +1,7 @@
 package xw.szbz.cn;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import xw.szbz.cn.model.BaZiRequest;
 import xw.szbz.cn.model.BaZiResult;
 import xw.szbz.cn.service.BaZiService;
@@ -22,7 +23,7 @@ public class GeminiAnalysisExample {
         GeminiService geminiService = createGeminiService();
 
         // 1. 创建八字请求
-        BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23);
+        BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23,"");
 
         // 2. 计算八字
         BaZiResult baZiResult = baZiService.calculate(request);
@@ -67,7 +68,10 @@ public class GeminiAnalysisExample {
      * 创建并配置 GeminiService（不依赖 Spring）
      */
     private static GeminiService createGeminiService() {
-        GeminiService service = new GeminiService();
+        // 创建 PromptTemplateUtil
+        xw.szbz.cn.util.PromptTemplateUtil promptTemplateUtil = new xw.szbz.cn.util.PromptTemplateUtil();
+
+        GeminiService service = new GeminiService(promptTemplateUtil);
         try {
             // 从环境变量或配置文件读取 API Key
             String apiKey = System.getenv("GEMINI_API_KEY");

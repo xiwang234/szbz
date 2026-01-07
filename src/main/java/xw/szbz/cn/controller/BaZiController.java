@@ -389,7 +389,7 @@ public class BaZiController {
             if (rateLimitEnabled) {
                 long todayCount = getTodaySubmitCount(openId, jiTuRepository);
                 if (todayCount >= jituDailyLimit) {
-                    String errorMsg = String.format("今日提交次数已达上限（%d/%d），请明天再试", todayCount, jituDailyLimit);
+                    String errorMsg = String.format("今日提交次数已达上限（%d/%d），请明天再来", todayCount, jituDailyLimit);
                     return buildErrorResponse(businessLog, startTime, 429, errorMsg);
                 }
                 System.out.println(String.format("吉途限流检查通过，今日已提交: %d/%d", todayCount, jituDailyLimit));
@@ -417,12 +417,10 @@ public class BaZiController {
                 businessLog.setAiAnalysis(cachedResult);
                 
             } else {
-                // 没有缓存，需要计算和AI分析
-                System.out.println("数据库中无缓存，执行八字计算和AI分析");
-                
                 // ===== Step 6: 计算八字（包含大运、流年） =====
                 BaZiResult baZiResult = baZiService.calculate(request);
                 businessLog.setBaziResult(objectMapper.writeValueAsString(baZiResult));
+                logger.info("八字计算结果: " + baZiResult);
 
                 // ===== Step 7: 使用 Gemini AI 分析（返回JSON格式） =====
                 aiAnalysis = geminiService.analyzeBaZi(baZiResult);

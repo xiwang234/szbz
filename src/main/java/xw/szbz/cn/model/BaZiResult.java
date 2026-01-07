@@ -13,6 +13,16 @@ public class BaZiResult {
     private Pillar hourPillar;
     private String fullBaZi;
     private BirthInfo birthInfo;
+    private String background;
+
+    public String getBackground() {
+        return background;
+    }
+
+    public void setBackground(String background) {
+        this.background = background;
+    }
+
 
     // 新增属性
     private BasicInfo basicInfo;                // 基本信息（性别、年、月、日、时）
@@ -114,7 +124,7 @@ public class BaZiResult {
         sb.append("\"fullBaZi\":\"").append(fullBaZi).append("\",");
         sb.append("\"birthInfo\":").append(birthInfo != null ? birthInfo.toString() : "null").append(",");
         sb.append("\"basicInfo\":").append(basicInfo != null ? basicInfo.toString() : "null").append(",");
-
+        sb.append("\"background\":\"").append(background).append("\",");
         // 大运及其对应流年列表（覆盖到当前年份）
         sb.append("\"daYunStringList\":[");
         if (daYunStringList != null && !daYunStringList.isEmpty()) {

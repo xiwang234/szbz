@@ -17,7 +17,7 @@ public class PromptTemplateUtil {
 
     /**
      * 加载六壬预测提示词模板并替换变量
-     * 
+     *
      * @param courseInfo 课传信息
      * @param question 占问事项
      * @param background 占问背景
@@ -30,8 +30,27 @@ public class PromptTemplateUtil {
         variables.put("question", question);
         variables.put("background", background);
         variables.put("birthInfo", birthInfo);
-        
+
         return renderTemplate("prompts/liuren_prediction_template.txt", variables);
+    }
+
+    /**
+     * 加载八字预测提示词模板并替换变量
+     *
+     * @param basicInfo 基本出生信息（四柱八字）
+     * @param daYunStringList 大运及流年列表（到当前年份）
+     * @param background 当前背景
+     * @param daYunALLStringList 完整的10个大运及流年列表
+     * @return 渲染后的提示词
+     */
+    public String renderBaZiTemplate(String basicInfo, String daYunStringList, String background, String daYunALLStringList) {
+        Map<String, String> variables = new HashMap<>();
+        variables.put("basicInfo", basicInfo);
+        variables.put("daYunStringList", daYunStringList);
+        variables.put("background", background != null ? background : "无特殊背景");
+        variables.put("daYunALLStringList", daYunALLStringList);
+
+        return renderTemplate("prompts/bazi_prediction_template.txt", variables);
     }
 
     /**

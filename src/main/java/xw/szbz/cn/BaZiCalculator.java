@@ -12,7 +12,7 @@ public class BaZiCalculator {
         BaZiService service = new BaZiService();
 
         // 1984年11月23日23点25分
-        BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23);
+        BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23,"");
         BaZiResult result = service.calculate(request);
 
         System.out.println("========== 四柱八字排盘结果 ==========");

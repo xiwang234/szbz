@@ -9,16 +9,19 @@ public class BaZiRequest {
     private int month;
     private int day;
     private int hour;
+    private String background;
 
+    
     public BaZiRequest() {
     }
 
-    public BaZiRequest(String gender, int year, int month, int day, int hour) {
+    public BaZiRequest(String gender, int year, int month, int day, int hour, String background) {
         this.gender = gender;
         this.year = year;
         this.month = month;
         this.day = day;
         this.hour = hour;
+        this.background = background;
     }
 
     public String getGender() {
@@ -60,4 +63,13 @@ public class BaZiRequest {
     public void setHour(int hour) {
         this.hour = hour;
     }
+    
+    public String getBackground() {
+        return background;
+    }
+
+    public void setBackground(String background) {
+        this.background = background;
+    }
+
 }

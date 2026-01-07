@@ -42,7 +42,7 @@ class Ph8ServiceTest {
         }
 
         // 1. 计算八字
-        BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23);
+        BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23,"");
         BaZiResult baZiResult = baZiService.calculate(request);
 
         // 2. 使用 Ph8 分析
@@ -72,7 +72,7 @@ class Ph8ServiceTest {
         }
 
         // 1. 计算八字
-        BaZiRequest request = new BaZiRequest("女", 1989, 11, 23, 20);
+        BaZiRequest request = new BaZiRequest("女", 1989, 11, 23, 20,"");
         BaZiResult baZiResult = baZiService.calculate(request);
 
         // 2. 使用 Ph8 分析
@@ -99,7 +99,7 @@ class Ph8ServiceTest {
             return;
         }
 
-        BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23);
+        BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23,"");
         BaZiResult baZiResult = baZiService.calculate(request);
 
         // 应该抛出 IllegalStateException
@@ -119,7 +119,7 @@ class Ph8ServiceTest {
         }
 
         // 测试子时（23点）的特殊情况
-        BaZiRequest request = new BaZiRequest("男", 2025, 11, 24, 23);
+        BaZiRequest request = new BaZiRequest("男", 2025, 11, 24, 23,"");
         BaZiResult baZiResult = baZiService.calculate(request);
 
         // 使用 Ph8 分析

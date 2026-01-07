@@ -159,7 +159,7 @@ class BaZiServiceTest {
     @Test
     @DisplayName("核心测试 - 2025年11月24日16点48分 = 乙巳年丁亥月丁酉日戊申时")
     void testCalculate_20251124_1648() {
-        BaZiRequest request = new BaZiRequest("男", 2025, 11, 24, 16);
+        BaZiRequest request = new BaZiRequest("男", 2025, 11, 24, 16,"");
         BaZiResult result = baZiService.calculate(request);
 
         // 验证四柱
@@ -177,7 +177,7 @@ class BaZiServiceTest {
     @Test
     @DisplayName("核心测试 - 1996年6月2日5点43分 = 丙子年癸巳月庚午日己卯时")
     void testCalculate_19960602_0543() {
-        BaZiRequest request = new BaZiRequest("女", 1996, 6, 2, 5);
+        BaZiRequest request = new BaZiRequest("女", 1996, 6, 2, 5,"");
         BaZiResult result = baZiService.calculate(request);
 
         // 验证四柱
@@ -195,7 +195,7 @@ class BaZiServiceTest {
     @Test
     @DisplayName("核心测试 - 1985年5月14日10点47分 = 乙丑年辛巳月癸丑日丁巳时")
     void testCalculate_19850514_1047() {
-        BaZiRequest request = new BaZiRequest("男", 1985, 5, 14, 10);
+        BaZiRequest request = new BaZiRequest("男", 1985, 5, 14, 10,"");
         BaZiResult result = baZiService.calculate(request);
 
         // 验证四柱
@@ -212,7 +212,7 @@ class BaZiServiceTest {
     @Test
     @DisplayName("核心测试 - 1981年6月17日14点49分 = 辛酉年甲午月丙寅日乙未时")
     void testCalculate_19810617_1449() {
-        BaZiRequest request = new BaZiRequest("女", 1981, 6, 17, 14);
+        BaZiRequest request = new BaZiRequest("女", 1981, 6, 17, 14,"");
         BaZiResult result = baZiService.calculate(request);
 
         // 验证四柱
@@ -230,7 +230,7 @@ class BaZiServiceTest {
     @Test
     @DisplayName("核心测试 - 1989年11月23日20点36分 = 己巳年乙亥月丁亥日庚戌时")
     void testCalculate_19891123_2036() {
-        BaZiRequest request = new BaZiRequest("女", 1989, 11, 23, 20);
+        BaZiRequest request = new BaZiRequest("女", 1989, 11, 23, 20,"");
         BaZiResult result = baZiService.calculate(request);
 
         // 验证四柱
@@ -248,7 +248,7 @@ class BaZiServiceTest {
     @Test
     @DisplayName("核心测试 - 1984年11月23日23点25分 = 甲子年乙亥月壬戌日庚子时")
     void testCalculate_19841123_2325() {
-        BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23);
+        BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23,"");
         BaZiResult result = baZiService.calculate(request);
         System.out.println("#############" + result.getFullBaZi());
         // System.out.println("#############" + result.getExtendedInfo());
@@ -269,7 +269,7 @@ class BaZiServiceTest {
     @Test
     @DisplayName("核心测试 - 2014年5月24日16点48分 = 甲午年己巳月乙未日甲申时")
     void testCalculate_20140524_1648() {
-        BaZiRequest request = new BaZiRequest("男", 2014, 5, 24, 16);
+        BaZiRequest request = new BaZiRequest("男", 2014, 5, 24, 16,"");
         BaZiResult result = baZiService.calculate(request);
 
         // 验证四柱
@@ -289,7 +289,7 @@ class BaZiServiceTest {
     @Test
     @DisplayName("测试子时跨日处理 - 23点只调整日柱")
     void testCalculate_23Hour_OnlyDayPillarAdjusted() {
-        BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23);
+        BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23,"");
         BaZiResult result = baZiService.calculate(request);
 
         // 年柱月柱仍然是原日期
@@ -303,7 +303,7 @@ class BaZiServiceTest {
     @Test
     @DisplayName("测试0点不需要跨日调整")
     void testCalculate_0Hour_ShouldNotAdjust() {
-        BaZiRequest request = new BaZiRequest("男", 1984, 11, 24, 0);
+        BaZiRequest request = new BaZiRequest("男", 1984, 11, 24, 0,"");
         BaZiResult result = baZiService.calculate(request);
 
         assertFalse(result.getBirthInfo().isAdjusted());
@@ -314,7 +314,7 @@ class BaZiServiceTest {
     @Test
     @DisplayName("测试年末跨日 - 12月31日23点")
     void testCalculate_23Hour_EndOfYear() {
-        BaZiRequest request = new BaZiRequest("男", 1984, 12, 31, 23);
+        BaZiRequest request = new BaZiRequest("男", 1984, 12, 31, 23,"");
         BaZiResult result = baZiService.calculate(request);
 
         assertTrue(result.getBirthInfo().isAdjusted());
@@ -329,7 +329,7 @@ class BaZiServiceTest {
     @Test
     @DisplayName("测试性别 - 男")
     void testCalculate_GenderMale() {
-        BaZiRequest request = new BaZiRequest("男", 1989, 11, 23, 20);
+        BaZiRequest request = new BaZiRequest("男", 1989, 11, 23, 20,"");
         BaZiResult result = baZiService.calculate(request);
         assertEquals("男", result.getGender());
     }
@@ -337,7 +337,7 @@ class BaZiServiceTest {
     @Test
     @DisplayName("测试性别 - 女")
     void testCalculate_GenderFemale() {
-        BaZiRequest request = new BaZiRequest("女", 1989, 11, 23, 20);
+        BaZiRequest request = new BaZiRequest("女", 1989, 11, 23, 20,"");
         BaZiResult result = baZiService.calculate(request);
         assertEquals("女", result.getGender());
     }
@@ -345,7 +345,7 @@ class BaZiServiceTest {
     @Test
     @DisplayName("测试性别 - male")
     void testCalculate_GenderMaleEnglish() {
-        BaZiRequest request = new BaZiRequest("male", 1989, 11, 23, 20);
+        BaZiRequest request = new BaZiRequest("male", 1989, 11, 23, 20,"");
         BaZiResult result = baZiService.calculate(request);
         assertEquals("男", result.getGender());
     }
@@ -353,7 +353,7 @@ class BaZiServiceTest {
     @Test
     @DisplayName("测试性别 - female")
     void testCalculate_GenderFemaleEnglish() {
-        BaZiRequest request = new BaZiRequest("female", 1989, 11, 23, 20);
+        BaZiRequest request = new BaZiRequest("female", 1989, 11, 23, 20,"");
         BaZiResult result = baZiService.calculate(request);
         assertEquals("女", result.getGender());
     }
@@ -361,7 +361,7 @@ class BaZiServiceTest {
     @Test
     @DisplayName("测试daYunALLStringList - 验证包含10个大运")
     void testCalculate_DaYunALLStringList() {
-        BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23);
+        BaZiRequest request = new BaZiRequest("男", 1984, 11, 23, 23,"");
         BaZiResult result = baZiService.calculate(request);
 
         // 验证 daYunALLStringList 不为空

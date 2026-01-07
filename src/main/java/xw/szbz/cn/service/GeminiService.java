@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.genai.Client;
 import com.google.genai.types.GenerateContentResponse;
 
+import xw.szbz.cn.exception.ServiceException;
 import xw.szbz.cn.model.BaZiResult;
 
 /**
@@ -50,7 +51,7 @@ public class GeminiService {
         apiKey = System.getenv("GEMINI_API_KEY");
         if (apiKey == null || apiKey.isEmpty()) {
             logger.error("Gemini API key 未配置");
-            throw new IllegalStateException("Gemini API key 未配置。请在 application.properties 中设置 gemini.api.key");
+            throw new ServiceException("系统配置异常，请联系管理员", 500);
         }
         
         long startTime = System.currentTimeMillis();
@@ -95,19 +96,20 @@ public class GeminiService {
 
         } catch (Exception e) {
             long totalTime = System.currentTimeMillis() - startTime;
-            
-            // 记录完整的异常堆栈信息
+
+            // 记录完整的异常堆栈信息到日志（仅供内部查看）
             logger.error("八字分析失败，耗时: {} ms", totalTime);
             logger.error("异常类型: {}", e.getClass().getName());
             logger.error("异常信息: {}", e.getMessage());
-            
+
             // 记录完整堆栈
             StringWriter sw = new StringWriter();
             PrintWriter pw = new PrintWriter(sw);
             e.printStackTrace(pw);
             logger.error("完整堆栈信息:\n{}", sw.toString());
-            
-            throw new RuntimeException("调用 Gemini API 失败: " + e.getMessage(), e);
+
+            // 抛出用户友好的异常消息（不暴露技术细节）
+            throw new ServiceException("解读服务暂时不可用，请稍后重试", 500, e);
         }
     }
 
@@ -124,7 +126,7 @@ public class GeminiService {
         apiKey = System.getenv("GEMINI_API_KEY");
         if (apiKey == null || apiKey.isEmpty()) {
             logger.error("key 未配置");
-            throw new IllegalStateException("key 未配置。请设置key");
+            throw new ServiceException("系统配置异常，请联系管理员", 500);
         }
 
         HttpURLConnection conn = null;
@@ -190,7 +192,7 @@ public class GeminiService {
                 return result;
 
             } else {
-                // 读取错误信息
+                // 读取错误信息（仅记录到日志，不暴露给用户）
                 StringBuilder errorResponse = new StringBuilder();
                 try (BufferedReader errorReader = new BufferedReader(
                     new InputStreamReader(conn.getErrorStream(), StandardCharsets.UTF_8))) {
@@ -199,32 +201,37 @@ public class GeminiService {
                         errorResponse.append(inputLine);
                     }
                 }
-                
+
                 String errorMsg = "Gemini API 返回错误码 " + responseCode + ": " + errorResponse.toString();
                 logger.error("Gemini API 调用失败: {}", errorMsg);
-                logger.error("请求详情 - 模型: {}, 提示词长度: {}, 耗时: {} ms", 
+                logger.error("请求详情 - 模型: {}, 提示词长度: {}, 耗时: {} ms",
                     modelName, prompt != null ? prompt.length() : 0, requestTime);
-                
-                throw new RuntimeException(errorMsg);
+
+                // 抛出用户友好的异常消息
+                throw new ServiceException("解读服务暂时不可用，请稍后重试", 500);
             }
 
+        } catch (ServiceException e) {
+            // 直接抛出ServiceException，不再包装
+            throw e;
         } catch (Exception e) {
             long totalTime = System.currentTimeMillis() - startTime;
-            
-            // 记录完整的异常堆栈信息
+
+            // 记录完整的异常堆栈信息到日志（仅供内部查看）
             logger.error("调用 Gemini API 发生异常，耗时: {} ms", totalTime);
             logger.error("异常类型: {}", e.getClass().getName());
             logger.error("异常信息: {}", e.getMessage());
-            logger.error("请求参数 - 模型: {}, 提示词长度: {}", 
+            logger.error("请求参数 - 模型: {}, 提示词长度: {}",
                 modelName, prompt != null ? prompt.length() : 0);
-            
+
             // 记录完整堆栈
             StringWriter sw = new StringWriter();
             PrintWriter pw = new PrintWriter(sw);
             e.printStackTrace(pw);
             logger.error("完整堆栈信息:\n{}", sw.toString());
-            
-            throw new RuntimeException("调用 Gemini API 失败: " + e.getMessage(), e);
+
+            // 抛出用户友好的异常消息（不暴露技术细节）
+            throw new ServiceException("解读服务暂时不可用，请稍后重试", 500, e);
         } finally {
             if (conn != null) {
                 conn.disconnect();
@@ -361,10 +368,10 @@ public class GeminiService {
      */
     public void generateContentStream(String prompt, java.util.function.Consumer<String> chunkCallback) {
         logger.info("开始流式调用 Gemini API，模型: {}, 提示词长度: {}", modelName, prompt != null ? prompt.length() : 0);
-        
+
         if (apiKey == null || apiKey.isEmpty()) {
             logger.error("Gemini API key 未配置");
-            throw new IllegalStateException("Gemini API key 未配置。请在 application.properties 中设置 gemini.api.key");
+            throw new ServiceException("系统配置异常，请联系管理员", 500);
         }
 
         HttpURLConnection conn = null;
@@ -458,7 +465,7 @@ public class GeminiService {
                 }
 
             } else {
-                // 读取错误信息
+                // 读取错误信息（仅记录到日志，不暴露给用户）
                 StringBuilder errorResponse = new StringBuilder();
                 try (BufferedReader errorReader = new BufferedReader(
                     new InputStreamReader(conn.getErrorStream(), StandardCharsets.UTF_8))) {
@@ -467,27 +474,33 @@ public class GeminiService {
                         errorResponse.append(inputLine);
                     }
                 }
-                
+
                 String errorMsg = "Gemini 流式 API 返回错误码 " + responseCode + ": " + errorResponse.toString();
                 logger.error("流式调用失败: {}", errorMsg);
-                throw new RuntimeException(errorMsg);
+
+                // 抛出用户友好的异常消息
+                throw new ServiceException("解读服务暂时不可用，请稍后重试", 500);
             }
 
+        } catch (ServiceException e) {
+            // 直接抛出ServiceException，不再包装
+            throw e;
         } catch (Exception e) {
             long totalTime = System.currentTimeMillis() - startTime;
-            
-            // 记录完整的异常堆栈信息
+
+            // 记录完整的异常堆栈信息到日志（仅供内部查看）
             logger.error("流式调用 Gemini API 发生异常，耗时: {} ms", totalTime);
             logger.error("异常类型: {}", e.getClass().getName());
             logger.error("异常信息: {}", e.getMessage());
-            
+
             // 记录完整堆栈
             StringWriter sw = new StringWriter();
             PrintWriter pw = new PrintWriter(sw);
             e.printStackTrace(pw);
             logger.error("完整堆栈信息:\n{}", sw.toString());
-            
-            throw new RuntimeException("调用 Gemini API 失败: " + e.getMessage(), e);
+
+            // 抛出用户友好的异常消息（不暴露技术细节）
+            throw new ServiceException("解读服务暂时不可用，请稍后重试", 500, e);
         } finally {
             if (conn != null) {
                 conn.disconnect();

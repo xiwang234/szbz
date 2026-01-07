@@ -23,6 +23,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import xw.szbz.cn.entity.JiTu;
 import xw.szbz.cn.entity.User;
 import xw.szbz.cn.entity.WenJi;
+import xw.szbz.cn.exception.ServiceException;
 import xw.szbz.cn.model.ApiResponse;
 import xw.szbz.cn.model.BaZiAnalysisResponse;
 import xw.szbz.cn.model.BaZiRequest;
@@ -297,9 +298,13 @@ public class BaZiController {
 
             return ResponseEntity.ok(ApiResponse.success(responseData));
 
+        } catch (ServiceException e) {
+            // 业务异常，返回用户友好消息
+            logger.error("业务异常: {}", e.getUserMessage());
+            return buildLiuRenErrorResponse(businessLog, startTime, e.getStatusCode(), e.getUserMessage());
         } catch (Exception e) {
-            System.err.println("六壬预测服务器错误: " + e.getMessage());
-            return buildLiuRenErrorResponse(businessLog, startTime, 500, "服务器内部错误: " + e.getMessage());
+            logger.error("六壬预测服务器错误", e);
+            return buildLiuRenErrorResponse(businessLog, startTime, 500, "服务暂时不可用，请稍后重试");
         }
     }
 
@@ -447,9 +452,13 @@ public class BaZiController {
 
         } catch (IllegalArgumentException e) {
             return buildErrorResponse(businessLog, startTime, 400, e.getMessage());
+        } catch (ServiceException e) {
+            // 业务异常，返回用户友好消息
+            logger.error("业务异常: {}", e.getUserMessage());
+            return buildErrorResponse(businessLog, startTime, e.getStatusCode(), e.getUserMessage());
         } catch (Exception e) {
-            System.err.println("服务器错误: " + e.getMessage());
-            return buildErrorResponse(businessLog, startTime, 500, "服务器内部错误: " + e.getMessage());
+            logger.error("服务器错误", e);
+            return buildErrorResponse(businessLog, startTime, 500, "服务暂时不可用，请稍后重试");
         }
     }
 

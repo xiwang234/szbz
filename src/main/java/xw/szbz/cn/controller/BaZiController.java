@@ -340,7 +340,6 @@ public class BaZiController {
             businessLog.setMonth(request.getMonth());
             businessLog.setDay(request.getDay());
             businessLog.setHour(request.getHour());
-
             // ===== Step 1: 验证JWT Token =====
             if (token == null || token.isEmpty()) {
                 return buildErrorResponse(businessLog, startTime, 401, "未提供认证Token");

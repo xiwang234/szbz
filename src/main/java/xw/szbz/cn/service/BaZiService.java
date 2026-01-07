@@ -1,14 +1,23 @@
 package xw.szbz.cn.service;
 
-import org.springframework.stereotype.Service;
-import xw.szbz.cn.enums.DiZhi;
-import xw.szbz.cn.enums.Gender;
-import xw.szbz.cn.enums.TianGan;
-import xw.szbz.cn.model.*;
-
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.springframework.stereotype.Service;
+
+import xw.szbz.cn.enums.DiZhi;
+import xw.szbz.cn.enums.Gender;
+import xw.szbz.cn.enums.TianGan;
+import xw.szbz.cn.model.BaZiRequest;
+import xw.szbz.cn.model.BaZiResult;
+import xw.szbz.cn.model.BasicInfo;
+import xw.szbz.cn.model.DaYun;
+import xw.szbz.cn.model.DaYunLiuNian;
+import xw.szbz.cn.model.ExtendedInfo;
+import xw.szbz.cn.model.LiuNian;
+import xw.szbz.cn.model.Pillar;
+import xw.szbz.cn.model.QiYunInfo;
 
 /**
  * 四柱八字计算服务
@@ -60,7 +69,7 @@ public class BaZiService {
         result.setHourPillar(hourPillar);
         result.setFullBaZi(yearPillar.getFullName() + " " + monthPillar.getFullName() + " "
                 + dayPillar.getFullName() + " " + hourPillar.getFullName());
-
+        result.setBackground(request.getBackground());
         // 设置出生信息
         BaZiResult.BirthInfo birthInfo = new BaZiResult.BirthInfo();
         birthInfo.setYear(year);

@@ -18,6 +18,8 @@ import xw.szbz.cn.util.FieldEncryptionUtil;
 import xw.szbz.cn.util.PasswordHashUtil;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -416,13 +418,31 @@ public class AuthService {
         if (expiryTime == null) {
             return false;
         }
-        
+
         // 检查是否过期
         if (expiryTime < System.currentTimeMillis()) {
             tokenBlacklist.remove(jti);
             return false;
         }
-        
+
         return true;
+    }
+
+    /**
+     * 获取Token黑名单所有条目（用于缓存管理）
+     */
+    public Map<String, Object> getTokenBlacklistEntries() {
+        Map<String, Object> entries = new java.util.HashMap<>();
+        long currentTime = System.currentTimeMillis();
+
+        tokenBlacklist.forEach((jti, expiryTime) -> {
+            Map<String, Object> tokenData = new java.util.HashMap<>();
+            tokenData.put("expiryTime", expiryTime);
+            tokenData.put("remainingTime", Math.max(0, expiryTime - currentTime) + "ms");
+            tokenData.put("isExpired", expiryTime < currentTime);
+            entries.put(jti, tokenData);
+        });
+
+        return entries;
     }
 }

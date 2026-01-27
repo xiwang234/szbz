@@ -355,4 +355,61 @@ public class SecurityFilter implements Filter {
         ipBlockCounts.forEach((ip, count) -> counts.put(ip, count.get()));
         return counts;
     }
+
+    /**
+     * 获取IP请求计数缓存条目（用于缓存管理）
+     */
+    public Map<String, Object> getIpRequestCountEntries() {
+        Map<String, Object> entries = new HashMap<>();
+        long currentTime = System.currentTimeMillis();
+
+        ipRequestCounts.forEach((ip, count) -> {
+            Map<String, Object> ipData = new HashMap<>();
+            ipData.put("requestCount", count.get());
+            Long resetTime = ipRequestResetTime.get(ip);
+            if (resetTime != null) {
+                ipData.put("resetTime", resetTime);
+                ipData.put("remainingTime", Math.max(0, resetTime - currentTime) + "ms");
+            }
+            entries.put(ip, ipData);
+        });
+
+        return entries;
+    }
+
+    /**
+     * 获取IP封禁计数缓存条目（用于缓存管理）
+     */
+    public Map<String, Object> getIpBlockCountEntries() {
+        Map<String, Object> entries = new HashMap<>();
+
+        ipBlockCounts.forEach((ip, count) -> {
+            Map<String, Object> ipData = new HashMap<>();
+            ipData.put("blockCount", count.get());
+            ipData.put("isBlocked", blockedIps.contains(ip));
+            ipData.put("threshold", blockThreshold);
+            entries.put(ip, ipData);
+        });
+
+        return entries;
+    }
+
+    /**
+     * 获取封禁IP缓存条目（用于缓存管理）
+     */
+    public Map<String, Object> getBlockedIpEntries() {
+        Map<String, Object> entries = new HashMap<>();
+
+        blockedIps.forEach(ip -> {
+            Map<String, Object> ipData = new HashMap<>();
+            ipData.put("blocked", true);
+            AtomicInteger blockCount = ipBlockCounts.get(ip);
+            if (blockCount != null) {
+                ipData.put("totalBlockCount", blockCount.get());
+            }
+            entries.put(ip, ipData);
+        });
+
+        return entries;
+    }
 }

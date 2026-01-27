@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import xw.szbz.cn.entity.WebUser;
 import xw.szbz.cn.model.ApiResponse;
 import xw.szbz.cn.model.AuthResponse;
+import xw.szbz.cn.model.CacheInfoResponse;
 import xw.szbz.cn.model.LifeAIRequest;
 import xw.szbz.cn.model.LifeAIResponse;
 import xw.szbz.cn.model.PasswordResetRequest;
@@ -25,6 +26,7 @@ import xw.szbz.cn.model.ResetPasswordRequest;
 import xw.szbz.cn.model.UserInfoResponse;
 import xw.szbz.cn.model.WebLoginRequest;
 import xw.szbz.cn.service.AuthService;
+import xw.szbz.cn.service.CacheManagementService;
 import xw.szbz.cn.service.DataMaskingService;
 import xw.szbz.cn.service.RandomSaltService;
 import xw.szbz.cn.util.EnhancedJwtUtil;
@@ -52,6 +54,9 @@ public class WebAuthController {
 
     @Autowired
     private RandomSaltService randomSaltService;
+
+    @Autowired
+    private CacheManagementService cacheManagementService;
     
     /**
      * 用户注册
@@ -369,6 +374,47 @@ public class WebAuthController {
 
         if (request.getCategory().length() > 50) {
             throw new IllegalArgumentException("分类不能超过50字符");
+        }
+    }
+
+    /**
+     * 查看所有缓存信息
+     * GET /api/web-auth/cache-info
+     * 返回所有本地缓存的key和value，用于开发调试和系统优化
+     */
+    @GetMapping("/cache-info")
+    public ResponseEntity<ApiResponse<java.util.List<CacheInfoResponse>>> getCacheInfo(
+            @RequestHeader("Authorization") String authHeader) {
+
+        try {
+            // 1. Token 验证
+            String token = extractToken(authHeader);
+
+            if (!jwtUtil.validateToken(token) || !jwtUtil.isAccessToken(token)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("无效的访问令牌"));
+            }
+
+            // 2. 获取用户信息（确认用户已登录）
+            String encryptedUserId = jwtUtil.getEncryptedUserIdFromToken(token);
+            WebUser user = authService.getUserByEncryptedId(encryptedUserId);
+
+            if (!user.getActive()) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("账户已被禁用"));
+            }
+
+            // 3. 获取所有缓存信息
+            java.util.List<CacheInfoResponse> cacheInfoList = cacheManagementService.getAllCacheInfo();
+
+            return ResponseEntity.ok(ApiResponse.success(cacheInfoList, "获取缓存信息成功"));
+
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("服务器内部错误：" + e.getMessage()));
         }
     }
 

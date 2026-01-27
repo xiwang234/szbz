@@ -6,6 +6,8 @@ import org.springframework.stereotype.Service;
 import xw.szbz.cn.exception.ServiceException;
 
 import java.security.SecureRandom;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -143,5 +145,21 @@ public class RandomSaltService {
         return String.format("Salt Cache - Size: %d, Stats: %s",
             saltCache.size(),
             saltCache.stats().toString());
+    }
+
+    /**
+     * 获取所有缓存条目（用于缓存管理）
+     */
+    public Map<String, Object> getAllSaltEntries() {
+        Map<String, Object> entries = new java.util.HashMap<>();
+        saltCache.asMap().forEach((key, value) -> {
+            Map<String, Object> saltData = new java.util.HashMap<>();
+            saltData.put("salt", value.getSalt());
+            saltData.put("status", value.getStatus().toString());
+            saltData.put("createTime", value.getCreateTime());
+            saltData.put("age", System.currentTimeMillis() - value.getCreateTime() + "ms");
+            entries.put(key, saltData);
+        });
+        return entries;
     }
 }

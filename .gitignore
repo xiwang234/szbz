@@ -6,3 +6,5 @@ logs/
 .vscode/
 .mvn/wrapper/
 szbz.db
+.DS_Store
+.dockerignore

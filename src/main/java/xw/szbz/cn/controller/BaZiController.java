@@ -404,6 +404,7 @@ public class BaZiController {
             );
 
             Object aiAnalysis;
+            Thread.sleep(9000);
             
             if (cachedJiTu.isPresent()) {
                 // 找到缓存数据，直接返回

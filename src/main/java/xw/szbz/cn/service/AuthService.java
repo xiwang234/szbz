@@ -15,6 +15,7 @@ import xw.szbz.cn.repository.WebUserRepository;
 import xw.szbz.cn.util.EnhancedJwtUtil;
 import xw.szbz.cn.util.EnhancedUserIdEncryption;
 import xw.szbz.cn.util.FieldEncryptionUtil;
+import xw.szbz.cn.util.PasswordHashUtil;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -42,60 +43,72 @@ public class AuthService {
     
     @Autowired
     private DataMaskingService maskingService;
-    
+
+    @Autowired
+    private RandomSaltService randomSaltService;
+
+    @Autowired
+    private PasswordHashUtil passwordHashUtil;
+
     @Value("${jwt.access-token.expiration:3600000}")
     private Long accessTokenExpiration;
-    
+
     @Value("${jwt.refresh-token.expiration:604800000}")
     private Long refreshTokenExpiration;
-    
+
+    @Value("${password.fixed.salt:szbz-fixed-salt-2024-secure-password}")
+    private String fixedSalt;
+
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
-    
+
     // Token黑名单（用于登出），生产环境应使用Redis
     private final ConcurrentHashMap<String, Long> tokenBlacklist = new ConcurrentHashMap<>();
     
     /**
      * 用户注册
+     * 前端传入的密码已经是 SHA256(原密码 + 固定盐)
      */
     @Transactional
     public void register(RegisterRequest request, String ipAddress) {
         // 1. 验证输入
         validateRegisterRequest(request);
-        
+
         // 2. 加密邮箱
         String encryptedEmail = fieldEncryptionUtil.encryptEmail(request.getEmail());
-        
+
         // 3. 检查用户名和邮箱是否已存在
         if (webUserRepository.existsByUsername(request.getUsername())) {
             throw new ServiceException("用户名已存在");
         }
-        
+
         if (webUserRepository.existsByEmail(encryptedEmail)) {
             throw new ServiceException("邮箱已被注册");
         }
-        
+
         // 4. 创建用户
+        // 注意：前端传入的密码已经是 SHA256(原密码 + 固定盐)，直接保存到数据库
         WebUser user = new WebUser();
         user.setUsername(request.getUsername());
         user.setEmail(encryptedEmail);
-        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        user.setPasswordHash(request.getPassword()); // 直接保存前端传入的哈希密码
         user.setEmailVerified(false);
         user.setActive(true);
         user.setCreateTime(System.currentTimeMillis());
         user.setLastLoginIp(ipAddress);
-        
+
         // 5. 生成邮箱验证令牌（24小时有效）
         user.setEmailVerificationToken(UUID.randomUUID().toString());
         user.setEmailVerificationExpiry(LocalDateTime.now().plusHours(24));
-        
+
         // 6. 保存用户
         webUserRepository.save(user);
-        
+
         // TODO: 发送邮箱验证邮件
     }
     
     /**
      * 用户登录
+     * 前端传入的密码是 SHA256(原密码 + 固定盐 + 随机盐)
      */
     @Transactional
     public AuthResponse login(WebLoginRequest request, String ipAddress, String userAgent) {
@@ -106,40 +119,50 @@ public class AuthService {
         if (request.getPassword() == null || request.getPassword().isEmpty()) {
             throw new ServiceException("密码不能为空");
         }
-        
-        // 2. 加密邮箱查询用户
+        if (request.getRandomSalt() == null || request.getRandomSalt().isEmpty()) {
+            throw new ServiceException("随机盐不能为空");
+        }
+
+        // 2. 验证随机盐（检查是否未使用且在5分钟有效期内）
+        randomSaltService.validateAndMarkSaltAsUsed(request.getRandomSalt());
+
+        // 3. 加密邮箱查询用户
         String encryptedEmail = fieldEncryptionUtil.encryptEmail(request.getEmail());
         Optional<WebUser> userOpt = webUserRepository.findByEmail(encryptedEmail);
-        
+
         if (!userOpt.isPresent()) {
             throw new ServiceException("邮箱或密码错误");
         }
-        
+
         WebUser user = userOpt.get();
-        
-        // 3. 验证密码
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+
+        // 4. 验证密码
+        // 数据库中存储的是：SHA256(原密码 + 固定盐)
+        // 前端传入的是：SHA256(原密码 + 固定盐 + 随机盐)
+        // 需要计算：SHA256(数据库密码 + 随机盐) 并与前端传入的密码比较
+        String expectedPassword = passwordHashUtil.sha256Hash(user.getPasswordHash() + request.getRandomSalt());
+        if (!expectedPassword.equals(request.getPassword())) {
             throw new ServiceException("邮箱或密码错误");
         }
-        
-        // 4. 检查账户状态
+
+        // 5. 检查账户状态
         if (!user.getActive()) {
             throw new ServiceException("账户已被禁用");
         }
-        
-        // 5. 生成加密用户ID
+
+        // 6. 生成加密用户ID
         String encryptedUserId = userIdEncryption.encryptUserId(
-            user.getId(), 
+            user.getId(),
             user.getCreateTimeAsLocalDateTime()
         );
-        
-        // 6. 生成会话ID和设备ID
+
+        // 7. 生成会话ID和设备ID
         String sessionId = enhancedJwtUtil.generateSessionId();
-        String deviceId = request.getDeviceId() != null ? 
-            request.getDeviceId() : 
+        String deviceId = request.getDeviceId() != null ?
+            request.getDeviceId() :
             enhancedJwtUtil.generateDeviceId(userAgent, ipAddress);
-        
-        // 7. 生成Token
+
+        // 8. 生成Token
         String accessToken = enhancedJwtUtil.generateAccessToken(
             encryptedUserId,
             user.getUsername(),
@@ -148,23 +171,23 @@ public class AuthService {
             deviceId,
             ipAddress
         );
-        
+
         String refreshToken = enhancedJwtUtil.generateRefreshToken(
             encryptedUserId,
             sessionId,
             deviceId
         );
-        
-        // 8. 更新最后登录信息
+
+        // 9. 更新最后登录信息
         user.setLastLoginTime(System.currentTimeMillis());
         user.setLastLoginIp(ipAddress);
         webUserRepository.save(user);
-        
-        // 9. 脱敏邮箱
+
+        // 10. 脱敏邮箱
         String plainEmail = fieldEncryptionUtil.decryptEmail(user.getEmail());
         String maskedEmail = maskingService.maskEmail(plainEmail);
-        
-        // 10. 返回响应
+
+        // 11. 返回响应
         return new AuthResponse(
             accessToken,
             refreshToken,

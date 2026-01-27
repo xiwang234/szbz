@@ -3,5 +3,6 @@ target/
 *.war
 *.class
 logs/
-.vscode
-.mvn
+.vscode/
+.mvn/wrapper/
+szbz.db

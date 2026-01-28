@@ -1,14 +1,16 @@
 package xw.szbz.cn.util;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.stereotype.Component;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * API 签名验证工具类
@@ -38,18 +40,20 @@ public class SignatureUtil {
         TreeMap<String, String> sortedParams = new TreeMap<>(params);
 
         // 2. 添加 timestamp 和 nonce
+        System.out.println("Params before adding timestamp and nonce: " + params);
         sortedParams.put("timestamp", timestamp);
         sortedParams.put("nonce", nonce);
-
+        System.out.println(timestamp);
+        System.out.println(nonce);
         // 3. 过滤空值参数，拼接参数字符串
         String paramString = sortedParams.entrySet().stream()
             .filter(entry -> entry.getValue() != null && !entry.getValue().isEmpty())
             .map(entry -> entry.getKey() + "=" + entry.getValue())
             .collect(Collectors.joining("&"));
-
+        System.out.println("Param String: " + paramString);
         // 4. 拼接签名源字符串：参数字符串 + 密钥
         String signSource = paramString + secret;
-
+        System.out.println("Sign Source: " + signSource);
         // 5. SHA-256 加密
         return passwordHashUtil.sha256Hash(signSource);
     }

@@ -4,9 +4,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
+import javax.crypto.Mac;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
@@ -15,56 +17,127 @@ import java.util.Base64;
  * 字段加密工具类
  * 用于加密敏感字段（如邮箱、手机号等）
  * 算法：AES-256-GCM
- * 特点：认证加密，防止密文被篡改
+ * 特点：
+ * - 对于需要查询的字段（如邮箱），使用确定性加密（固定IV）
+ * - 相同明文总是得到相同密文，可用于数据库查询
+ * - 认证加密，防止密文被篡改
  */
 @Component
 public class FieldEncryptionUtil {
-    
+
     @Value("${field.encryption.key:your-field-encryption-key-32-chars}")
     private String encryptionKey;
-    
+
+    @Value("${field.encryption.iv.salt:your-iv-salt-for-deterministic-encryption}")
+    private String ivSalt;
+
     private static final String ALGORITHM = "AES/GCM/NoPadding";
     private static final int GCM_IV_LENGTH = 12;
     private static final int GCM_TAG_LENGTH = 128;
     
     /**
-     * 加密字段
+     * 确定性加密（用于需要查询的字段，如邮箱）
+     * 相同明文总是得到相同密文
      * @param plainText 明文
      * @return Base64编码的密文
      */
-    public String encrypt(String plainText) {
+    public String encryptDeterministic(String plainText) {
         if (plainText == null || plainText.isEmpty()) {
             return plainText;
         }
-        
+
+        try {
+            // 基于明文和盐生成固定的 IV（使用 SHA-256）
+            byte[] iv = generateDeterministicIV(plainText);
+
+            // 初始化密钥（确保32字节）
+            byte[] keyBytes = prepareKey(encryptionKey);
+            SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
+
+            // 初始化Cipher
+            Cipher cipher = Cipher.getInstance(ALGORITHM);
+            GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
+            cipher.init(Cipher.ENCRYPT_MODE, keySpec, gcmSpec);
+
+            // 加密
+            byte[] ciphertext = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
+
+            // 将IV和密文拼接（IV + 密文）
+            byte[] result = new byte[iv.length + ciphertext.length];
+            System.arraycopy(iv, 0, result, 0, iv.length);
+            System.arraycopy(ciphertext, 0, result, iv.length, ciphertext.length);
+
+            // Base64编码
+            return Base64.getEncoder().encodeToString(result);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to encrypt field deterministically", e);
+        }
+    }
+
+    /**
+     * 生成确定性 IV
+     * 使用 SHA-256 从明文和盐生成固定的 12 字节 IV
+     */
+    private byte[] generateDeterministicIV(String plainText) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            String input = plainText + ivSalt;
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            // 取 SHA-256 结果的前 12 字节作为 IV
+            return Arrays.copyOf(hash, GCM_IV_LENGTH);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate deterministic IV", e);
+        }
+    }
+
+    /**
+     * 随机加密（用于不需要查询的字段）
+     * 每次加密都会生成不同的密文，更安全
+     * @param plainText 明文
+     * @return Base64编码的密文
+     */
+    public String encryptRandom(String plainText) {
+        if (plainText == null || plainText.isEmpty()) {
+            return plainText;
+        }
+
         try {
             // 生成随机IV
             byte[] iv = new byte[GCM_IV_LENGTH];
             SecureRandom random = new SecureRandom();
             random.nextBytes(iv);
-            
+
             // 初始化密钥（确保32字节）
             byte[] keyBytes = prepareKey(encryptionKey);
             SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
-            
+
             // 初始化Cipher
             Cipher cipher = Cipher.getInstance(ALGORITHM);
             GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
             cipher.init(Cipher.ENCRYPT_MODE, keySpec, gcmSpec);
-            
+
             // 加密
             byte[] ciphertext = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
-            
+
             // 将IV和密文拼接（IV + 密文）
             byte[] result = new byte[iv.length + ciphertext.length];
             System.arraycopy(iv, 0, result, 0, iv.length);
             System.arraycopy(ciphertext, 0, result, iv.length, ciphertext.length);
-            
+
             // Base64编码
             return Base64.getEncoder().encodeToString(result);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to encrypt field", e);
+            throw new RuntimeException("Failed to encrypt field randomly", e);
         }
+    }
+
+    /**
+     * 通用加密方法（默认使用确定性加密）
+     * @deprecated 建议明确使用 encryptDeterministic 或 encryptRandom
+     */
+    @Deprecated
+    public String encrypt(String plainText) {
+        return encryptDeterministic(plainText);
     }
     
     /**
@@ -124,26 +197,28 @@ public class FieldEncryptionUtil {
     }
     
     /**
-     * 加密邮箱（封装方法，语义更清晰）
+     * 加密邮箱（使用确定性加密，用于数据库查询）
+     * 相同邮箱总是得到相同的加密结果
      */
     public String encryptEmail(String email) {
-        return encrypt(email);
+        return encryptDeterministic(email);
     }
-    
+
     /**
      * 解密邮箱
      */
     public String decryptEmail(String encryptedEmail) {
         return decrypt(encryptedEmail);
     }
-    
+
     /**
-     * 加密手机号
+     * 加密手机号（使用确定性加密，用于数据库查询）
+     * 相同手机号总是得到相同的加密结果
      */
     public String encryptPhone(String phone) {
-        return encrypt(phone);
+        return encryptDeterministic(phone);
     }
-    
+
     /**
      * 解密手机号
      */

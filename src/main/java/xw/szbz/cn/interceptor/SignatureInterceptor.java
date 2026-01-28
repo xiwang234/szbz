@@ -1,20 +1,22 @@
 package xw.szbz.cn.interceptor;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import xw.szbz.cn.filter.RepeatableReadHttpServletRequest;
 import xw.szbz.cn.model.ApiResponse;
 import xw.szbz.cn.util.SignatureUtil;
-
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.Map;
 
 /**
  * 签名验证拦截器
@@ -26,9 +28,9 @@ public class SignatureInterceptor implements HandlerInterceptor {
     private static final Logger logger = LoggerFactory.getLogger(SignatureInterceptor.class);
 
     // 请求头名称
-    private static final String HEADER_TIMESTAMP = "X-Sign-Timestamp";
-    private static final String HEADER_NONCE = "X-Sign-Nonce";
-    private static final String HEADER_SIGN = "X-Sign";
+    private static final String HEADER_TIMESTAMP = "X-Timestamp";
+    private static final String HEADER_NONCE = "X-Nonce";
+    private static final String HEADER_SIGN = "X-Signature";
 
     private final SignatureUtil signatureUtil;
     private final ObjectMapper objectMapper;
@@ -139,7 +141,9 @@ public class SignatureInterceptor implements HandlerInterceptor {
         if ("/api/web-auth/register".equals(requestUri)) {
             return true;
         }
-
+        if ("/api/web-auth/random-salt".equals(requestUri)) {
+            return true;
+        }
         // 排除 /api/bazi/* 的所有接口
         if (requestUri.startsWith("/api/bazi/")) {
             return true;

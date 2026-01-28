@@ -1,11 +1,17 @@
 package xw.szbz.cn.service;
 
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import xw.szbz.cn.entity.WebUser;
 import xw.szbz.cn.exception.ServiceException;
 import xw.szbz.cn.model.AuthResponse;
@@ -16,13 +22,6 @@ import xw.szbz.cn.util.EnhancedJwtUtil;
 import xw.szbz.cn.util.EnhancedUserIdEncryption;
 import xw.szbz.cn.util.FieldEncryptionUtil;
 import xw.szbz.cn.util.PasswordHashUtil;
-
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 认证服务
@@ -100,7 +99,7 @@ public class AuthService {
 
         // 5. 生成邮箱验证令牌（24小时有效）
         user.setEmailVerificationToken(UUID.randomUUID().toString());
-        user.setEmailVerificationExpiry(LocalDateTime.now().plusHours(24));
+        user.setEmailVerificationExpiry(System.currentTimeMillis() + 24 * 60 * 60 * 1000L); // 24小时
 
         // 6. 保存用户
         webUserRepository.save(user);
@@ -130,13 +129,10 @@ public class AuthService {
 
         // 3. 加密邮箱查询用户
         String encryptedEmail = fieldEncryptionUtil.encryptEmail(request.getEmail());
-        Optional<WebUser> userOpt = webUserRepository.findByEmail(encryptedEmail);
-
-        if (!userOpt.isPresent()) {
+        WebUser user = webUserRepository.findByEmail(encryptedEmail);
+        if (user == null) {
             throw new ServiceException("邮箱或密码错误");
         }
-
-        WebUser user = userOpt.get();
 
         // 4. 验证密码
         // 数据库中存储的是：SHA256(原密码 + 固定盐)
@@ -308,20 +304,18 @@ public class AuthService {
     @Transactional
     public void requestPasswordReset(String email) {
         String encryptedEmail = fieldEncryptionUtil.encryptEmail(email);
-        Optional<WebUser> userOpt = webUserRepository.findByEmail(encryptedEmail);
-        
-        if (!userOpt.isPresent()) {
+        WebUser user = webUserRepository.findByEmail(encryptedEmail);
+
+        if (user == null) {
             // 为了安全，不透露用户是否存在
             return;
         }
-        
-        WebUser user = userOpt.get();
-        
+
         // 生成密码重置令牌（1小时有效）
         user.setPasswordResetToken(UUID.randomUUID().toString());
-        user.setPasswordResetExpiry(LocalDateTime.now().plusHours(1));
+        user.setPasswordResetExpiry(System.currentTimeMillis() + 60 * 60 * 1000L); // 1小时
         webUserRepository.save(user);
-        
+
         // TODO: 发送密码重置邮件
     }
     
@@ -330,20 +324,18 @@ public class AuthService {
      */
     @Transactional
     public void resetPassword(String resetToken, String newPassword) {
-        Optional<WebUser> userOpt = webUserRepository.findByPasswordResetToken(resetToken);
-        
-        if (!userOpt.isPresent()) {
+        WebUser user = webUserRepository.findByPasswordResetToken(resetToken);
+
+        if (user == null) {
             throw new ServiceException("Invalid reset token");
         }
-        
-        WebUser user = userOpt.get();
-        
+
         // 检查令牌是否过期
-        if (user.getPasswordResetExpiry() == null || 
-            user.getPasswordResetExpiry().isBefore(LocalDateTime.now())) {
+        if (user.getPasswordResetExpiry() == null ||
+            user.getPasswordResetExpiry() < System.currentTimeMillis()) {
             throw new ServiceException("Reset token has expired");
         }
-        
+
         // 更新密码
         user.setPasswordHash(passwordEncoder.encode(newPassword));
         user.setPasswordResetToken(null);
@@ -356,20 +348,18 @@ public class AuthService {
      */
     @Transactional
     public void verifyEmail(String verificationToken) {
-        Optional<WebUser> userOpt = webUserRepository.findByEmailVerificationToken(verificationToken);
-        
-        if (!userOpt.isPresent()) {
+        WebUser user = webUserRepository.findByEmailVerificationToken(verificationToken);
+
+        if (user == null) {
             throw new ServiceException("Invalid verification token");
         }
-        
-        WebUser user = userOpt.get();
-        
+
         // 检查令牌是否过期
-        if (user.getEmailVerificationExpiry() == null || 
-            user.getEmailVerificationExpiry().isBefore(LocalDateTime.now())) {
+        if (user.getEmailVerificationExpiry() == null ||
+            user.getEmailVerificationExpiry() < System.currentTimeMillis()) {
             throw new ServiceException("Verification token has expired");
         }
-        
+
         // 更新验证状态
         user.setEmailVerified(true);
         user.setEmailVerificationToken(null);

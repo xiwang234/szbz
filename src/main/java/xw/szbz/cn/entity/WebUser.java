@@ -47,20 +47,20 @@ public class WebUser {
     private String emailVerificationToken;
     
     /**
-     * 邮箱验证令牌过期时间
+     * 邮箱验证令牌过期时间（13位毫秒时间戳）
      */
-    private LocalDateTime emailVerificationExpiry;
-    
+    private Long emailVerificationExpiry;
+
     /**
      * 密码重置令牌
      */
     @Column(length = 100)
     private String passwordResetToken;
-    
+
     /**
-     * 密码重置令牌过期时间
+     * 密码重置令牌过期时间（13位毫秒时间戳）
      */
-    private LocalDateTime passwordResetExpiry;
+    private Long passwordResetExpiry;
     
     /**
      * 账户状态（true=正常，false=禁用）
@@ -139,27 +139,27 @@ public class WebUser {
         this.emailVerificationToken = emailVerificationToken;
     }
     
-    public LocalDateTime getEmailVerificationExpiry() {
+    public Long getEmailVerificationExpiry() {
         return emailVerificationExpiry;
     }
-    
-    public void setEmailVerificationExpiry(LocalDateTime emailVerificationExpiry) {
+
+    public void setEmailVerificationExpiry(Long emailVerificationExpiry) {
         this.emailVerificationExpiry = emailVerificationExpiry;
     }
-    
+
     public String getPasswordResetToken() {
         return passwordResetToken;
     }
-    
+
     public void setPasswordResetToken(String passwordResetToken) {
         this.passwordResetToken = passwordResetToken;
     }
-    
-    public LocalDateTime getPasswordResetExpiry() {
+
+    public Long getPasswordResetExpiry() {
         return passwordResetExpiry;
     }
-    
-    public void setPasswordResetExpiry(LocalDateTime passwordResetExpiry) {
+
+    public void setPasswordResetExpiry(Long passwordResetExpiry) {
         this.passwordResetExpiry = passwordResetExpiry;
     }
     

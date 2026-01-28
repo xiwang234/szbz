@@ -141,7 +141,7 @@ class AuthServiceTest {
         mockUser.setCreateTime(System.currentTimeMillis());
         
         when(fieldEncryptionUtil.encryptEmail(request.getEmail())).thenReturn(encryptedEmail);
-        when(webUserRepository.findByEmail(encryptedEmail)).thenReturn(Optional.of(mockUser));
+        when(webUserRepository.findByEmail(encryptedEmail)).thenReturn(mockUser);
         when(userIdEncryption.encryptUserId(anyLong(), any(LocalDateTime.class))).thenReturn(encryptedUserId);
         when(enhancedJwtUtil.generateSessionId()).thenReturn("session_123");
         when(enhancedJwtUtil.generateAccessToken(anyString(), anyString(), anyBoolean(), 
@@ -173,7 +173,7 @@ class AuthServiceTest {
         request.setPassword("Password123!");
         
         when(fieldEncryptionUtil.encryptEmail(anyString())).thenReturn("encrypted");
-        when(webUserRepository.findByEmail(anyString())).thenReturn(Optional.empty());
+        when(webUserRepository.findByEmail(anyString())).thenReturn(null);
         
         // When & Then
         assertThrows(ServiceException.class, () -> {
@@ -193,7 +193,7 @@ class AuthServiceTest {
         inactiveUser.setPasswordHash("$2a$10$hashedpassword");
         
         when(fieldEncryptionUtil.encryptEmail(anyString())).thenReturn("encrypted");
-        when(webUserRepository.findByEmail(anyString())).thenReturn(Optional.of(inactiveUser));
+        when(webUserRepository.findByEmail(anyString())).thenReturn(inactiveUser);
         
         // When & Then
         assertThrows(ServiceException.class, () -> {

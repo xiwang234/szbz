@@ -56,9 +56,10 @@ class WebAuthIntegrationTest {
     void setUp() {
         // 清理测试数据
         String encryptedEmail = fieldEncryptionUtil.encryptEmail(TEST_EMAIL);
-        webUserRepository.findByEmail(encryptedEmail).ifPresent(user -> {
-            webUserRepository.delete(user);
-        });
+        WebUser existingUser = webUserRepository.findByEmail(encryptedEmail);
+        if (existingUser != null) {
+            webUserRepository.delete(existingUser);
+        }
     }
     
     @Test
@@ -77,7 +78,7 @@ class WebAuthIntegrationTest {
         
         // 验证用户已创建
         String encryptedEmail = fieldEncryptionUtil.encryptEmail(TEST_EMAIL);
-        WebUser user = webUserRepository.findByEmail(encryptedEmail).orElseThrow();
+        WebUser user = webUserRepository.findByEmail(encryptedEmail);
         assertNotNull(user);
         assertEquals(TEST_USERNAME, user.getUsername());
         assertNotNull(user.getPasswordHash());
@@ -183,8 +184,11 @@ class WebAuthIntegrationTest {
         // 获取两个用户
         String encEmail1 = fieldEncryptionUtil.encryptEmail(request1.getEmail());
         String encEmail2 = fieldEncryptionUtil.encryptEmail(request2.getEmail());
-        WebUser user1 = webUserRepository.findByEmail(encEmail1).orElseThrow();
-        WebUser user2 = webUserRepository.findByEmail(encEmail2).orElseThrow();
+        WebUser user1 = webUserRepository.findByEmail(encEmail1);
+        WebUser user2 = webUserRepository.findByEmail(encEmail2);
+
+        assertNotNull(user1);
+        assertNotNull(user2);
         
         // 生成加密ID
         String encUserId1 = userIdEncryption.encryptUserId(user1.getId(), user1.getCreateTimeAsLocalDateTime());

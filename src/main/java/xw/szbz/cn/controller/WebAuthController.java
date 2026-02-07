@@ -1,5 +1,7 @@
 package xw.szbz.cn.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,10 +14,12 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.servlet.http.HttpServletRequest;
+import xw.szbz.cn.entity.LifeAIResult;
 import xw.szbz.cn.entity.WebUser;
 import xw.szbz.cn.model.ApiResponse;
 import xw.szbz.cn.model.AuthResponse;
 import xw.szbz.cn.model.CacheInfoResponse;
+import xw.szbz.cn.model.LifeAIHistoryResponse;
 import xw.szbz.cn.model.LifeAIRequest;
 import xw.szbz.cn.model.LifeAIResponse;
 import xw.szbz.cn.model.PasswordResetRequest;
@@ -25,13 +29,16 @@ import xw.szbz.cn.model.RegisterRequest;
 import xw.szbz.cn.model.ResetPasswordRequest;
 import xw.szbz.cn.model.UserInfoResponse;
 import xw.szbz.cn.model.WebLoginRequest;
+import xw.szbz.cn.repository.LifeAIResultRepository;
 import xw.szbz.cn.service.AuthService;
 import xw.szbz.cn.service.CacheManagementService;
 import xw.szbz.cn.service.DataMaskingService;
+import xw.szbz.cn.service.GeminiService;
+import xw.szbz.cn.service.LiuRenService;
 import xw.szbz.cn.service.RandomSaltService;
 import xw.szbz.cn.util.EnhancedJwtUtil;
 import xw.szbz.cn.util.FieldEncryptionUtil;
-
+import xw.szbz.cn.util.PromptTemplateUtil;
 /**
  * Web应用认证Controller
  * 提供注册、登录、Token刷新、登出等接口
@@ -57,7 +64,139 @@ public class WebAuthController {
 
     @Autowired
     private CacheManagementService cacheManagementService;
+
+    @Autowired
+    private LiuRenService liuRenService;
+
+    @Autowired
+    private PromptTemplateUtil promptTemplateUtil;
+
+    @Autowired
+    private GeminiService geminiService;
+
+    @Autowired
+    private LifeAIResultRepository lifeAIResultRepository;
+
+
+    private static final Logger logger = LoggerFactory.getLogger(WebAuthController.class);
     
+    /**
+     * LifeAI 接口
+     * POST /api/web-auth/lifeai
+     * 需要登录，提供人生建议和咨询服务
+     */
+      @PostMapping("/lifeai")
+      public ResponseEntity<ApiResponse<LifeAIResponse>> lifeAI(
+              @RequestHeader("Authorization") String authHeader,
+              @RequestBody LifeAIRequest request) {
+
+          try {
+
+                // 1. 从 JWT Token 中获取用户信息
+                // JWT Filter 已经验证过 Token 有效性
+                String token = extractToken(authHeader);
+                String encryptedUserId = jwtUtil.getEncryptedUserIdFromToken(token);
+
+                logger.info("LifeAI 请求，encryptedUserId: {}", encryptedUserId);
+                // 2. 获取用户详细信息并检查状态
+                WebUser user;
+                try {
+                    user = authService.getUserByEncryptedId(encryptedUserId);
+                } catch (Exception e) {
+                    logger.error("获取用户信息失败, encryptedUserId: {}", encryptedUserId, e);
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("用户信息获取失败"));
+                }
+
+                // 3. 检查用户账户状态
+                if (!user.getActive()) {
+                    logger.warn("用户账户已被禁用, userId: {}", encryptedUserId);
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("账户已被禁用"));
+                }
+
+                logger.info("LifeAI 请求，用户: {}, 问题分类: {}", user.getUsername(), request.getCategory());
+
+                // 4. 参数验证
+                validateLifeAIRequest(request);
+
+                // 5. TODO: 业务逻辑待定
+                // 这里将来会调用 AI 服务进行处理
+                String requestId = java.util.UUID.randomUUID().toString();
+                String answer = "业务逻辑待实现"; // 占位符
+
+
+
+                // ===== Step 4: 生成课传信息（根据当前时间排出农历四柱及大六壬天将） =====
+                String courseInfo = liuRenService.generateCourseInfo();
+                System.out.println("生成课传信息: " + courseInfo);
+
+                // ===== Step 5: 将出生年份转换为干支年份 =====
+                String ganZhiYear = liuRenService.convertBirthYearToGanZhi(request.getBirthYear());
+                System.out.println("干支年份: " + ganZhiYear);
+
+                // ===== Step 6: 组合干支信息和性别生成birthInfo =====
+                String birthInfo = liuRenService.generateBirthInfo(request.getBirthYear(), request.getGender());
+                System.out.println("出生信息: " + birthInfo);
+
+                // ===== Step 7: 渲染提示词模板 =====
+                String prompt = promptTemplateUtil.renderLiuRenTemplate(
+                    courseInfo,
+                    request.getQuestion(),
+                    request.getBackground(),
+                    birthInfo
+                );
+
+                logger.info("六壬预测提示词: " + prompt);
+
+                // ===== Step 8: 调用Gemini AI进行预测 =====
+                // String aiPrediction = geminiService.generateContent(prompt);
+                // logger.info("六壬预测结果: " + aiPrediction);
+
+
+                // 9. 构建响应
+                LifeAIResponse response = new LifeAIResponse(
+                    requestId,
+                    request.getBackground(),
+                    request.getQuestion(),
+                    request.getBirthYear(),
+                    request.getGender(),
+                    request.getCategory(),
+                    answer,
+                    System.currentTimeMillis()
+                );
+
+                // 10. 保存结果到数据库
+                try {
+                    LifeAIResult lifeAIResult = new LifeAIResult();
+                    lifeAIResult.setUserId(user.getId());  // 使用真实的数据库 ID
+                    lifeAIResult.setQuestion(request.getQuestion());
+                    lifeAIResult.setBackground(request.getBackground());
+                    lifeAIResult.setResult(answer);
+                    lifeAIResult.setBirthdayYear(request.getBirthYear());
+                    lifeAIResult.setGender(request.getGender());
+                    lifeAIResult.setCategory(request.getCategory());
+                    lifeAIResult.setCreateTime(System.currentTimeMillis());
+
+                    lifeAIResultRepository.save(lifeAIResult);
+                    logger.info("LifeAI 结果已保存到数据库，用户ID: {}, 记录ID: {}", user.getId(), lifeAIResult.getId());
+                } catch (Exception e) {
+                    // 保存失败不影响响应，只记录日志
+                    logger.error("保存 LifeAI 结果到数据库失败", e);
+                }
+
+                return ResponseEntity.ok(ApiResponse.success(response, "请求成功"));
+
+          } catch (IllegalArgumentException e) {
+              return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                  .body(ApiResponse.error(e.getMessage()));
+          } catch (Exception e) {
+              return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                  .body(ApiResponse.error("服务器内部错误：" + e.getMessage()));
+          }
+      }
+
+      
     /**
      * 用户注册
      * POST /api/web-auth/register
@@ -175,19 +314,21 @@ public class WebAuthController {
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserInfoResponse>> getCurrentUser(
             @RequestHeader("Authorization") String authHeader) {
-        
+
         try {
+            // JWT Filter 已经验证过 Token，直接获取用户信息
             String token = extractToken(authHeader);
-            
-            // 验证Token
-            if (!jwtUtil.validateToken(token) || !jwtUtil.isAccessToken(token)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("Invalid token"));
-            }
-            
-            // 获取用户信息
             String encryptedUserId = jwtUtil.getEncryptedUserIdFromToken(token);
-            WebUser user = authService.getUserByEncryptedId(encryptedUserId);
+
+            // 获取用户详细信息
+            WebUser user;
+            try {
+                user = authService.getUserByEncryptedId(encryptedUserId);
+            } catch (Exception e) {
+                logger.error("获取用户信息失败, encryptedUserId: {}", encryptedUserId, e);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("用户信息获取失败"));
+            }
             
             // 解密并脱敏邮箱
             String plainEmail = fieldEncryptionUtil.decryptEmail(user.getEmail());
@@ -266,63 +407,66 @@ public class WebAuthController {
     }
 
     /**
-     * LifeAI 接口
-     * POST /api/web-auth/lifeai
-     * 需要登录，提供人生建议和咨询服务
+     * 获取用户的 LifeAI 咨询历史
+     * GET /api/web-auth/history
      */
-    @PostMapping("/lifeai")
-    public ResponseEntity<ApiResponse<LifeAIResponse>> lifeAI(
-            @RequestHeader("Authorization") String authHeader,
-            @RequestBody LifeAIRequest request) {
+    @GetMapping("/history")
+    public ResponseEntity<ApiResponse<java.util.List<LifeAIHistoryResponse>>> getHistory(
+            @RequestHeader("Authorization") String authHeader) {
 
         try {
-            // 1. Token 验证
+            // 1. 从 JWT Token 中获取用户信息
             String token = extractToken(authHeader);
+            String encryptedUserId = jwtUtil.getEncryptedUserIdFromToken(token);
 
-            if (!jwtUtil.validateToken(token) || !jwtUtil.isAccessToken(token)) {
+            logger.info("查询历史记录，encryptedUserId: {}", encryptedUserId);
+
+            // 2. 获取用户详细信息并检查状态
+            WebUser user;
+            try {
+                user = authService.getUserByEncryptedId(encryptedUserId);
+            } catch (Exception e) {
+                logger.error("获取用户信息失败, encryptedUserId: {}", encryptedUserId, e);
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("无效的访问令牌"));
+                    .body(ApiResponse.error("用户信息获取失败"));
             }
 
-            // 2. 获取用户信息（确认用户已登录）
-            String encryptedUserId = jwtUtil.getEncryptedUserIdFromToken(token);
-            WebUser user = authService.getUserByEncryptedId(encryptedUserId);
-
+            // 3. 检查用户账户状态
             if (!user.getActive()) {
+                logger.warn("用户账户已被禁用, userId: {}", encryptedUserId);
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error("账户已被禁用"));
             }
 
-            // 3. 参数验证
-            validateLifeAIRequest(request);
+            // 4. 查询历史记录
+            java.util.List<LifeAIResult> results = lifeAIResultRepository
+                .findByUserIdOrderByCreateTimeDesc(user.getId());
 
-            // 4. TODO: 业务逻辑待定
-            // 这里将来会调用 AI 服务进行处理
-            String requestId = java.util.UUID.randomUUID().toString();
-            String answer = "业务逻辑待实现"; // 占位符
+            // 5. 转换为响应对象（不包含 user_id）
+            java.util.List<LifeAIHistoryResponse> historyList = results.stream()
+                .map(r -> new LifeAIHistoryResponse(
+                    r.getId(),
+                    r.getQuestion(),
+                    r.getBackground(),
+                    r.getResult(),
+                    r.getBirthdayYear(),
+                    r.getGender(),
+                    r.getCategory(),
+                    r.getCreateTime()
+                ))
+                .collect(java.util.stream.Collectors.toList());
 
-            // 5. 构建响应
-            LifeAIResponse response = new LifeAIResponse(
-                requestId,
-                request.getBackground(),
-                request.getQuestion(),
-                request.getBirthYear(),
-                request.getGender(),
-                request.getCategory(),
-                answer,
-                System.currentTimeMillis()
-            );
+            logger.info("查询到 {} 条历史记录，用户ID: {}", historyList.size(), user.getId());
 
-            return ResponseEntity.ok(ApiResponse.success(response, "请求成功"));
+            return ResponseEntity.ok(ApiResponse.success(historyList, "查询成功"));
 
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(e.getMessage()));
         } catch (Exception e) {
+            logger.error("查询历史记录失败", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("服务器内部错误：" + e.getMessage()));
+                .body(ApiResponse.error("查询失败：" + e.getMessage()));
         }
     }
+
 
     // ========== 私有辅助方法 ==========
 
@@ -387,24 +531,28 @@ public class WebAuthController {
             @RequestHeader("Authorization") String authHeader) {
 
         try {
-            // 1. Token 验证
+            // JWT Filter 已经验证过 Token，直接获取用户信息
             String token = extractToken(authHeader);
+            String encryptedUserId = jwtUtil.getEncryptedUserIdFromToken(token);
 
-            if (!jwtUtil.validateToken(token) || !jwtUtil.isAccessToken(token)) {
+            // 获取用户详细信息并检查状态
+            WebUser user;
+            try {
+                user = authService.getUserByEncryptedId(encryptedUserId);
+            } catch (Exception e) {
+                logger.error("获取用户信息失败, encryptedUserId: {}", encryptedUserId, e);
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("无效的访问令牌"));
+                    .body(ApiResponse.error("用户信息获取失败"));
             }
 
-            // 2. 获取用户信息（确认用户已登录）
-            String encryptedUserId = jwtUtil.getEncryptedUserIdFromToken(token);
-            WebUser user = authService.getUserByEncryptedId(encryptedUserId);
-
+            // 检查用户账户状态
             if (!user.getActive()) {
+                logger.warn("用户账户已被禁用, userId: {}", encryptedUserId);
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error("账户已被禁用"));
             }
 
-            // 3. 获取所有缓存信息
+            // 获取所有缓存信息
             java.util.List<CacheInfoResponse> cacheInfoList = cacheManagementService.getAllCacheInfo();
 
             return ResponseEntity.ok(ApiResponse.success(cacheInfoList, "获取缓存信息成功"));

@@ -151,14 +151,14 @@ public class SecurityFilter implements Filter {
 
         // ===== 防护 1: 检查 IP 是否在黑名单中 =====
         if (blockedIps.contains(clientIp)) {
-            logger.error("拦截已封禁 IP 访问: {} from {}", uri, clientIp);
+            logger.info("拦截已封禁 IP 访问: {} from {}", uri, clientIp);
             sendBlockedResponse(httpResponse, "IP 已被封禁");
             return;
         }
 
         // ===== 防护 2: IP 限流（每分钟最多 60 次请求） =====
         if (!checkIpRateLimit(clientIp)) {
-            logger.warn("IP 限流拦截: {} - 超过每分钟 {} 次请求限制", clientIp, ipRateLimit);
+            logger.info("IP 限流拦截: {} - 超过每分钟 {} 次请求限制", clientIp, ipRateLimit);
             incrementBlockCount(clientIp, "频繁请求");
             sendRateLimitResponse(httpResponse);
             return;
@@ -166,7 +166,7 @@ public class SecurityFilter implements Filter {
 
         // ===== 防护 3: HTTP Method 白名单（禁止 WebDAV 方法） =====
         if (!ALLOWED_METHODS.contains(method)) {
-            logger.warn("拦截非法 HTTP Method: {} {} from IP: {}", method, uri, clientIp);
+            logger.info("拦截非法 HTTP Method: {} {} from IP: {}", method, uri, clientIp);
             incrementBlockCount(clientIp, "非法 HTTP Method: " + method);
             sendMethodNotAllowedResponse(httpResponse);
             return;
@@ -174,7 +174,7 @@ public class SecurityFilter implements Filter {
 
         // ===== 防护 4: 检查 URI 是否包含恶意路径模式 =====
         if (containsMaliciousPattern(uri, MALICIOUS_PATH_PATTERNS)) {
-            logger.warn("阻止恶意路径访问: {} from IP: {}", uri, clientIp);
+            logger.info("阻止恶意路径访问: {} from IP: {}", uri, clientIp);
             incrementBlockCount(clientIp, "恶意路径: " + uri);
             sendSecurityResponse(httpResponse);
             return;
@@ -182,7 +182,7 @@ public class SecurityFilter implements Filter {
 
         // ===== 防护 5: 检查查询参数是否包含恶意模式（包括 RCE 攻击特征） =====
         if (queryString != null && containsMaliciousPattern(queryString, MALICIOUS_PARAM_PATTERNS)) {
-            logger.warn("阻止恶意参数请求: {} from IP: {}", queryString, clientIp);
+            logger.info("阻止恶意参数请求: {} from IP: {}", queryString, clientIp);
             incrementBlockCount(clientIp, "恶意查询参数");
             sendSecurityResponse(httpResponse);
             return;
@@ -192,7 +192,7 @@ public class SecurityFilter implements Filter {
         for (String[] paramValues : httpRequest.getParameterMap().values()) {
             String value = String.join(",", paramValues);
             if (containsMaliciousPattern(value, MALICIOUS_PARAM_PATTERNS)) {
-                logger.error("⚠️ 检测到 RCE 攻击尝试！参数值: {} from IP: {}", 
+                logger.info("⚠️ 检测到 RCE 攻击尝试！参数值: {} from IP: {}", 
                     value.length() > 200 ? value.substring(0, 200) + "..." : value, clientIp);
                 incrementBlockCount(clientIp, "RCE 攻击尝试");
                 sendSecurityResponse(httpResponse);

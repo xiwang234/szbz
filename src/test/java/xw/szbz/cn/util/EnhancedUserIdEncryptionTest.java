@@ -1,12 +1,16 @@
 package xw.szbz.cn.util;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDateTime;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * 用户ID加密工具测试
@@ -14,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class EnhancedUserIdEncryptionTest {
     
     private EnhancedUserIdEncryption encryption;
+
+    private ShortAesUserIdEncryptor shortAesUserIdEncryptor;
     
     @BeforeEach
     void setUp() {
@@ -24,14 +30,22 @@ class EnhancedUserIdEncryptionTest {
     }
     
     @Test
-    void testEncryptAndDecryptUserId() {
+    void testEncryptAndDecryptUserId() throws Exception {
         // Given
         Long userId = 12345L;
         LocalDateTime createdAt = LocalDateTime.now();
         
+
+        String encryptedId = shortAesUserIdEncryptor.encryptShortUserId(userId);
+        System.out.println("Encrypted ID: " + encryptedId);
+        Long decryptedId = shortAesUserIdEncryptor.decryptShortUserId(encryptedId);
+        System.out.println("Decrypted ID: " + decryptedId);
+        
         // When
-        String encryptedId = encryption.encryptUserId(userId, createdAt);
-        Long decryptedId = encryption.decryptUserId(encryptedId);
+        // String encryptedId = encryption.encryptUserId(userId, createdAt);
+        // System.out.println("Encrypted ID: " + encryptedId);
+        // Long decryptedId = encryption.decryptUserId(encryptedId);
+        // System.out.println("Decrypted ID: " + decryptedId);
         
         // Then
         assertNotNull(encryptedId);

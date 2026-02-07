@@ -5,6 +5,8 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -65,6 +67,8 @@ public class AuthService {
     // Token黑名单（用于登出），生产环境应使用Redis
     private final ConcurrentHashMap<String, Long> tokenBlacklist = new ConcurrentHashMap<>();
     
+    private static final Logger logger = LoggerFactory.getLogger(AuthService.class);
+    
     /**
      * 用户注册
      * 前端传入的密码已经是 SHA256(原密码 + 固定盐)
@@ -96,6 +100,7 @@ public class AuthService {
         user.setActive(true);
         user.setCreateTime(System.currentTimeMillis());
         user.setLastLoginIp(ipAddress);
+        user.setBizId(UUID.randomUUID().toString()); // 生成业务ID
 
         // 5. 生成邮箱验证令牌（24小时有效）
         user.setEmailVerificationToken(UUID.randomUUID().toString());
@@ -148,11 +153,10 @@ public class AuthService {
             throw new ServiceException("账户已被禁用");
         }
 
-        // 6. 生成加密用户ID
-        String encryptedUserId = userIdEncryption.encryptUserId(
-            user.getId(),
-            user.getCreateTimeAsLocalDateTime()
-        );
+        logger.info("登录成功，用户ID: {}, bizId: {}", user.getId(), user.getBizId());
+
+        // 6. 使用 bizId 作为业务标识
+        String bizId = user.getBizId();
 
         // 7. 生成会话ID和设备ID
         String sessionId = enhancedJwtUtil.generateSessionId();
@@ -160,9 +164,9 @@ public class AuthService {
             request.getDeviceId() :
             enhancedJwtUtil.generateDeviceId(userAgent, ipAddress);
 
-        // 8. 生成Token
+        // 8. 生成Token（使用 bizId 代替 encryptedUserId）
         String accessToken = enhancedJwtUtil.generateAccessToken(
-            encryptedUserId,
+            bizId,  // 使用 bizId
             user.getUsername(),
             user.getEmailVerified(),
             sessionId,
@@ -170,11 +174,15 @@ public class AuthService {
             ipAddress
         );
 
+        logger.info("登录成功，生成AccessToken");
+
         String refreshToken = enhancedJwtUtil.generateRefreshToken(
-            encryptedUserId,
+            bizId,  // 使用 bizId
             sessionId,
             deviceId
         );
+
+        logger.info("登录成功，生成RefreshToken");
 
         // 9. 更新最后登录信息
         user.setLastLoginTime(System.currentTimeMillis());
@@ -185,13 +193,13 @@ public class AuthService {
         String plainEmail = fieldEncryptionUtil.decryptEmail(user.getEmail());
         String maskedEmail = maskingService.maskEmail(plainEmail);
 
-        // 11. 返回响应
+        // 11. 返回响应（使用 bizId）
         return new AuthResponse(
             accessToken,
             refreshToken,
             System.currentTimeMillis() + accessTokenExpiration,
             System.currentTimeMillis() + refreshTokenExpiration,
-            encryptedUserId,
+            bizId,  // 返回 bizId
             user.getUsername(),
             maskedEmail
         );
@@ -205,69 +213,65 @@ public class AuthService {
         if (!enhancedJwtUtil.validateToken(refreshToken)) {
             throw new ServiceException("Invalid refresh token");
         }
-        
+
         if (!enhancedJwtUtil.isRefreshToken(refreshToken)) {
             throw new ServiceException("Token is not a refresh token");
         }
-        
+
         // 2. 检查是否在黑名单
         String jti = enhancedJwtUtil.getJtiFromToken(refreshToken);
         if (isTokenBlacklisted(jti)) {
             throw new ServiceException("Token has been revoked");
         }
-        
+
         // 3. 验证设备ID
         if (!enhancedJwtUtil.validateDeviceId(refreshToken, deviceId)) {
             throw new ServiceException("Device ID mismatch");
         }
-        
-        // 4. 获取用户信息
-        String encryptedUserId = enhancedJwtUtil.getEncryptedUserIdFromToken(refreshToken);
-        Long userId = userIdEncryption.decryptUserId(encryptedUserId);
-        
-        Optional<WebUser> userOpt = webUserRepository.findById(userId);
-        if (!userOpt.isPresent()) {
+
+        // 4. 获取用户信息（通过 bizId）
+        String bizId = enhancedJwtUtil.getEncryptedUserIdFromToken(refreshToken);
+        WebUser user = webUserRepository.findByBizId(bizId);
+        if (user == null) {
             throw new ServiceException("User not found");
         }
-        
-        WebUser user = userOpt.get();
-        
+
         if (!user.getActive()) {
             throw new ServiceException("Account is disabled");
         }
-        
+
         // 5. 生成新的Token（使用相同的会话ID）
         String sessionId = enhancedJwtUtil.getSessionIdFromToken(refreshToken);
-        
+
         String newAccessToken = enhancedJwtUtil.generateAccessToken(
-            encryptedUserId,
+            bizId,  // 使用 bizId
             user.getUsername(),
             user.getEmailVerified(),
             sessionId,
             deviceId,
             ipAddress
         );
-        
+
         String newRefreshToken = enhancedJwtUtil.generateRefreshToken(
-            encryptedUserId,
+            bizId,  // 使用 bizId
             sessionId,
             deviceId
         );
-        
+
         // 6. 将旧的Refresh Token加入黑名单
         addTokenToBlacklist(jti, refreshTokenExpiration);
-        
+
         // 7. 脱敏邮箱
         String plainEmail = fieldEncryptionUtil.decryptEmail(user.getEmail());
         String maskedEmail = maskingService.maskEmail(plainEmail);
-        
+
         // 8. 返回响应
         return new AuthResponse(
             newAccessToken,
             newRefreshToken,
             System.currentTimeMillis() + accessTokenExpiration,
             System.currentTimeMillis() + refreshTokenExpiration,
-            encryptedUserId,
+            bizId,  // 返回 bizId
             user.getUsername(),
             maskedEmail
         );
@@ -290,12 +294,22 @@ public class AuthService {
     }
     
     /**
-     * 根据加密用户ID获取用户
+     * 根据加密用户ID获取用户（现在 encryptedUserId 实际是 bizId）
      */
     public WebUser getUserByEncryptedId(String encryptedUserId) {
-        Long userId = userIdEncryption.decryptUserId(encryptedUserId);
-        return webUserRepository.findById(userId)
-            .orElseThrow(() -> new ServiceException("User not found"));
+        // 直接通过 bizId 查询，无需解密
+        WebUser user = webUserRepository.findByBizId(encryptedUserId);
+        if (user == null) {
+            throw new ServiceException("User not found");
+        }
+        return user;
+    }
+
+    /**
+     * 根据用户名获取用户
+     */
+    public WebUser getUserByUsername(String username) {
+        return webUserRepository.findByUsername(username);
     }
     
     /**

@@ -39,4 +39,9 @@ public interface WebUserRepository extends JpaRepository<WebUser, Long> {
      * 检查邮箱是否已存在（加密后的邮箱）
      */
     boolean existsByEmail(String encryptedEmail);
+
+    /**
+     * 根据业务ID查找用户
+     */
+    WebUser findByBizId(String bizId);
 }

@@ -84,7 +84,13 @@ public class WebUser {
      */
     @Column(length = 50)
     private String lastLoginIp;
-    
+
+    /**
+     * 业务ID（UUID，用于对外展示和JWT Token，隐藏真实ID）
+     */
+    @Column(nullable = false, unique = true, length = 36)
+    private String bizId;
+
     // 构造函数
     public WebUser() {
         this.createTime = System.currentTimeMillis();
@@ -194,7 +200,15 @@ public class WebUser {
     public void setLastLoginIp(String lastLoginIp) {
         this.lastLoginIp = lastLoginIp;
     }
-    
+
+    public String getBizId() {
+        return bizId;
+    }
+
+    public void setBizId(String bizId) {
+        this.bizId = bizId;
+    }
+
     /**
      * 获取LocalDateTime格式的创建时间（用于加密ID生成）
      */

@@ -48,9 +48,6 @@ public class AuthService {
     private DataMaskingService maskingService;
 
     @Autowired
-    private RandomSaltService randomSaltService;
-
-    @Autowired
     private PasswordHashUtil passwordHashUtil;
 
     @Value("${jwt.access-token.expiration:3600000}")
@@ -115,6 +112,7 @@ public class AuthService {
     /**
      * 用户登录
      * 前端传入的密码是 SHA256(原密码 + 固定盐 + 随机盐)
+     * 注意：随机盐验证已在 WebAuthController 中完成
      */
     @Transactional
     public AuthResponse login(WebLoginRequest request, String ipAddress, String userAgent) {
@@ -129,17 +127,14 @@ public class AuthService {
             throw new ServiceException("随机盐不能为空");
         }
 
-        // 2. 验证随机盐（检查是否未使用且在5分钟有效期内）
-        randomSaltService.validateAndMarkSaltAsUsed(request.getRandomSalt());
-
-        // 3. 加密邮箱查询用户
+        // 2. 加密邮箱查询用户
         String encryptedEmail = fieldEncryptionUtil.encryptEmail(request.getEmail());
         WebUser user = webUserRepository.findByEmail(encryptedEmail);
         if (user == null) {
             throw new ServiceException("邮箱或密码错误");
         }
 
-        // 4. 验证密码
+        // 3. 验证密码
         // 数据库中存储的是：SHA256(原密码 + 固定盐)
         // 前端传入的是：SHA256(原密码 + 固定盐 + 随机盐)
         // 需要计算：SHA256(数据库密码 + 随机盐) 并与前端传入的密码比较
@@ -148,23 +143,23 @@ public class AuthService {
             throw new ServiceException("邮箱或密码错误");
         }
 
-        // 5. 检查账户状态
+        // 4. 检查账户状态
         if (!user.getActive()) {
             throw new ServiceException("账户已被禁用");
         }
 
         logger.info("登录成功，用户ID: {}, bizId: {}", user.getId(), user.getBizId());
 
-        // 6. 使用 bizId 作为业务标识
+        // 5. 使用 bizId 作为业务标识
         String bizId = user.getBizId();
 
-        // 7. 生成会话ID和设备ID
+        // 6. 生成会话ID和设备ID
         String sessionId = enhancedJwtUtil.generateSessionId();
         String deviceId = request.getDeviceId() != null ?
             request.getDeviceId() :
             enhancedJwtUtil.generateDeviceId(userAgent, ipAddress);
 
-        // 8. 生成Token（使用 bizId 代替 encryptedUserId）
+        // 7. 生成Token（使用 bizId 代替 encryptedUserId）
         String accessToken = enhancedJwtUtil.generateAccessToken(
             bizId,  // 使用 bizId
             user.getUsername(),
@@ -184,16 +179,16 @@ public class AuthService {
 
         logger.info("登录成功，生成RefreshToken");
 
-        // 9. 更新最后登录信息
+        // 8. 更新最后登录信息
         user.setLastLoginTime(System.currentTimeMillis());
         user.setLastLoginIp(ipAddress);
         webUserRepository.save(user);
 
-        // 10. 脱敏邮箱
+        // 9. 脱敏邮箱
         String plainEmail = fieldEncryptionUtil.decryptEmail(user.getEmail());
         String maskedEmail = maskingService.maskEmail(plainEmail);
 
-        // 11. 返回响应（使用 bizId）
+        // 10. 返回响应（使用 bizId）
         return new AuthResponse(
             accessToken,
             refreshToken,

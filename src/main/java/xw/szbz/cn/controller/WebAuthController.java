@@ -15,10 +15,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.servlet.http.HttpServletRequest;
 import xw.szbz.cn.entity.LifeAIResult;
+import xw.szbz.cn.entity.UserSaltInfo;
 import xw.szbz.cn.entity.WebUser;
 import xw.szbz.cn.model.ApiResponse;
 import xw.szbz.cn.model.AuthResponse;
-import xw.szbz.cn.model.CacheInfoResponse;
 import xw.szbz.cn.model.LifeAIHistoryResponse;
 import xw.szbz.cn.model.LifeAIRequest;
 import xw.szbz.cn.model.LifeAIResponse;
@@ -30,8 +30,8 @@ import xw.szbz.cn.model.ResetPasswordRequest;
 import xw.szbz.cn.model.UserInfoResponse;
 import xw.szbz.cn.model.WebLoginRequest;
 import xw.szbz.cn.repository.LifeAIResultRepository;
+import xw.szbz.cn.repository.UserSaltInfoRepository;
 import xw.szbz.cn.service.AuthService;
-import xw.szbz.cn.service.CacheManagementService;
 import xw.szbz.cn.service.DataMaskingService;
 import xw.szbz.cn.service.GeminiService;
 import xw.szbz.cn.service.LiuRenService;
@@ -63,9 +63,6 @@ public class WebAuthController {
     private RandomSaltService randomSaltService;
 
     @Autowired
-    private CacheManagementService cacheManagementService;
-
-    @Autowired
     private LiuRenService liuRenService;
 
     @Autowired
@@ -76,6 +73,9 @@ public class WebAuthController {
 
     @Autowired
     private LifeAIResultRepository lifeAIResultRepository;
+
+    @Autowired
+    private UserSaltInfoRepository userSaltInfoRepository;
 
 
     private static final Logger logger = LoggerFactory.getLogger(WebAuthController.class);
@@ -223,17 +223,41 @@ public class WebAuthController {
     /**
      * 获取随机盐（用于登录）
      * GET /api/web-auth/random-salt
-     * 返回32位随机字符串，5分钟有效期
+     * 需要提供邮箱，返回32位随机字符串，5分钟有效期
+     * 随机盐与邮箱绑定，防止恶意攻击
      */
     @GetMapping("/random-salt")
-    public ResponseEntity<ApiResponse<RandomSaltResponse>> getRandomSalt() {
+    public ResponseEntity<ApiResponse<RandomSaltResponse>> getRandomSalt(
+            @RequestParam String email) {
         try {
+            // 参数验证
+            if (email == null || email.trim().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("邮箱不能为空"));
+            }
+
+            // 生成随机盐
             String randomSalt = randomSaltService.generateRandomSalt();
-            Long expiresAt = System.currentTimeMillis() + (5 * 60 * 1000); // 5分钟后过期
+            Long currentTime = System.currentTimeMillis();
+            Long expiresAt = currentTime + (5 * 60 * 1000); // 5分钟后过期
+            // 加密邮箱
+            String encryptedEmail = fieldEncryptionUtil.encryptEmail(email);
+            // 保存到数据库
+            UserSaltInfo saltInfo = new UserSaltInfo();
+            saltInfo.setEmail(encryptedEmail);
+            saltInfo.setSalt(randomSalt);
+            saltInfo.setStatus(0); // 0-未使用
+            saltInfo.setCreateTime(currentTime);
+            saltInfo.setUseTime(expiresAt);
+
+            userSaltInfoRepository.save(saltInfo);
+
+            logger.info("生成随机盐成功，邮箱: {}, 有效期至: {}", email, expiresAt);
 
             RandomSaltResponse response = new RandomSaltResponse(randomSalt, expiresAt);
             return ResponseEntity.ok(ApiResponse.success(response, "获取随机盐成功"));
         } catch (Exception e) {
+            logger.error("获取随机盐失败", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error(e.getMessage()));
         }
@@ -249,14 +273,60 @@ public class WebAuthController {
     public ResponseEntity<ApiResponse<AuthResponse>> login(
             @RequestBody WebLoginRequest request,
             HttpServletRequest httpRequest) {
-        
+
         String ipAddress = getClientIp(httpRequest);
         String userAgent = httpRequest.getHeader("User-Agent");
-        
+
         try {
+            // 1. 验证随机盐
+            if (request.getRandomSalt() == null || request.getRandomSalt().trim().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("随机盐不能为空"));
+            }
+
+            if (request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("邮箱不能为空"));
+            }
+            String encryptedEmail = fieldEncryptionUtil.encryptEmail(request.getEmail());
+            // 2. 查询数据库验证随机盐
+            java.util.Optional<UserSaltInfo> saltInfoOpt = userSaltInfoRepository
+                .findByEmailAndSalt(encryptedEmail, request.getRandomSalt());
+
+            if (!saltInfoOpt.isPresent()) {
+                logger.warn("随机盐验证失败：随机盐不存在或邮箱不匹配, 邮箱: {}", request.getEmail());
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("随机盐无效或已过期"));
+            }
+
+            UserSaltInfo saltInfo = saltInfoOpt.get();
+
+            // 3. 验证随机盐状态（必须是未使用）
+            if (saltInfo.getStatus() != 0) {
+                logger.warn("随机盐已被使用, 邮箱: {}, 随机盐: {}", request.getEmail(), request.getRandomSalt());
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("随机盐已被使用"));
+            }
+
+            // 4. 验证随机盐有效期
+            Long currentTime = System.currentTimeMillis();
+            if (currentTime > saltInfo.getUseTime()) {
+                logger.warn("随机盐已过期, 邮箱: {}, 过期时间: {}", request.getEmail(), saltInfo.getUseTime());
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("随机盐已过期，请重新获取"));
+            }
+
+            // 5. 随机盐验证通过，执行登录逻辑
             AuthResponse response = authService.login(request, ipAddress, userAgent);
+
+            // 6. 登录成功后，更新随机盐状态为已使用
+            saltInfo.setStatus(1);
+            userSaltInfoRepository.save(saltInfo);
+            logger.info("登录成功，随机盐已标记为已使用, 邮箱: {}", request.getEmail());
+
             return ResponseEntity.ok(ApiResponse.success(response,"登录成功"));
         } catch (Exception e) {
+            logger.error("登录失败, 邮箱: {}", request.getEmail(), e);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(ApiResponse.error(e.getMessage()));
         }
@@ -518,51 +588,6 @@ public class WebAuthController {
 
         if (request.getCategory().length() > 50) {
             throw new IllegalArgumentException("分类不能超过50字符");
-        }
-    }
-
-    /**
-     * 查看所有缓存信息
-     * GET /api/web-auth/cache-info
-     * 返回所有本地缓存的key和value，用于开发调试和系统优化
-     */
-    @GetMapping("/cache-info")
-    public ResponseEntity<ApiResponse<java.util.List<CacheInfoResponse>>> getCacheInfo(
-            @RequestHeader("Authorization") String authHeader) {
-
-        try {
-            // JWT Filter 已经验证过 Token，直接获取用户信息
-            String token = extractToken(authHeader);
-            String encryptedUserId = jwtUtil.getEncryptedUserIdFromToken(token);
-
-            // 获取用户详细信息并检查状态
-            WebUser user;
-            try {
-                user = authService.getUserByEncryptedId(encryptedUserId);
-            } catch (Exception e) {
-                logger.error("获取用户信息失败, encryptedUserId: {}", encryptedUserId, e);
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error("用户信息获取失败"));
-            }
-
-            // 检查用户账户状态
-            if (!user.getActive()) {
-                logger.warn("用户账户已被禁用, userId: {}", encryptedUserId);
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(ApiResponse.error("账户已被禁用"));
-            }
-
-            // 获取所有缓存信息
-            java.util.List<CacheInfoResponse> cacheInfoList = cacheManagementService.getAllCacheInfo();
-
-            return ResponseEntity.ok(ApiResponse.success(cacheInfoList, "获取缓存信息成功"));
-
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(e.getMessage()));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("服务器内部错误：" + e.getMessage()));
         }
     }
 

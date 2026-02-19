@@ -91,6 +91,12 @@ public class WebUser {
     @Column(nullable = false, unique = true, length = 36)
     private String bizId;
 
+    /**
+     * 免费体验次数
+     */
+    @Column(name = "free_count", nullable = false)
+    private Integer freeCount = 5;
+
     // 构造函数
     public WebUser() {
         this.createTime = System.currentTimeMillis();
@@ -207,6 +213,14 @@ public class WebUser {
 
     public void setBizId(String bizId) {
         this.bizId = bizId;
+    }
+
+    public Integer getFreeCount() {
+        return freeCount;
+    }
+
+    public void setFreeCount(Integer freeCount) {
+        this.freeCount = freeCount;
     }
 
     /**

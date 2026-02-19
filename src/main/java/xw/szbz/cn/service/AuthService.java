@@ -98,6 +98,7 @@ public class AuthService {
         user.setCreateTime(System.currentTimeMillis());
         user.setLastLoginIp(ipAddress);
         user.setBizId(UUID.randomUUID().toString()); // 生成业务ID
+        user.setFreeCount(5); // 设置免费体验次数为5次
 
         // 5. 生成邮箱验证令牌（24小时有效）
         user.setEmailVerificationToken(UUID.randomUUID().toString());
@@ -306,7 +307,15 @@ public class AuthService {
     public WebUser getUserByUsername(String username) {
         return webUserRepository.findByUsername(username);
     }
-    
+
+    /**
+     * 更新用户信息
+     */
+    @Transactional
+    public void updateUser(WebUser user) {
+        webUserRepository.save(user);
+    }
+
     /**
      * 密码重置请求（生成重置令牌并发送邮件）
      */

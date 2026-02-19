@@ -22,6 +22,7 @@ import xw.szbz.cn.model.AuthResponse;
 import xw.szbz.cn.model.LifeAIHistoryResponse;
 import xw.szbz.cn.model.LifeAIRequest;
 import xw.szbz.cn.model.LifeAIResponse;
+import xw.szbz.cn.model.PageResponse;
 import xw.szbz.cn.model.PasswordResetRequest;
 import xw.szbz.cn.model.RandomSaltResponse;
 import xw.szbz.cn.model.RefreshTokenRequest;
@@ -115,9 +116,17 @@ public class WebAuthController {
                         .body(ApiResponse.error("账户已被禁用"));
                 }
 
-                logger.info("LifeAI 请求，用户: {}, 问题分类: {}", user.getUsername(), request.getCategory());
+                // 4. 验证免费体验次数
+                Integer freeCount = user.getFreeCount();
+                if (freeCount == null || freeCount <= 0) {
+                    logger.warn("用户免费次数不足, userId: {}, freeCount: {}", user.getId(), freeCount);
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("您的免费体验次数已用完"));
+                }
 
-                // 4. 参数验证
+                logger.info("LifeAI 请求，用户: {}, 问题分类: {}, 剩余次数: {}", user.getUsername(), request.getCategory(), freeCount);
+
+                // 5. 参数验证
                 validateLifeAIRequest(request);
 
                 // 5. TODO: 业务逻辑待定
@@ -183,6 +192,19 @@ public class WebAuthController {
                 } catch (Exception e) {
                     // 保存失败不影响响应，只记录日志
                     logger.error("保存 LifeAI 结果到数据库失败", e);
+                }
+
+                // 11. 扣减免费次数
+                try {
+                    Integer currentFreeCount = user.getFreeCount();
+                    if (currentFreeCount != null && currentFreeCount > 0) {
+                        user.setFreeCount(currentFreeCount - 1);
+                        authService.updateUser(user);
+                        logger.info("免费次数已扣减，用户ID: {}, 剩余次数: {}", user.getId(), user.getFreeCount());
+                    }
+                } catch (Exception e) {
+                    // 扣减失败只记录日志，不影响响应
+                    logger.error("扣减免费次数失败", e);
                 }
 
                 return ResponseEntity.ok(ApiResponse.success(response, "请求成功"));
@@ -477,21 +499,39 @@ public class WebAuthController {
     }
 
     /**
-     * 获取用户的 LifeAI 咨询历史
+     * 获取用户的 LifeAI 咨询历史（支持分页和类型过滤）
      * GET /api/web-auth/history
+     *
+     * @param pageNo 页码（从1开始，默认1）
+     * @param pageSize 每页大小（默认10）
+     * @param type 类型过滤（"all"表示所有类型，其他值按category过滤）
      */
     @GetMapping("/history")
-    public ResponseEntity<ApiResponse<java.util.List<LifeAIHistoryResponse>>> getHistory(
-            @RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<ApiResponse<PageResponse<LifeAIHistoryResponse>>> getHistory(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam(defaultValue = "1") Integer pageNo,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(defaultValue = "all") String type) {
 
         try {
-            // 1. 从 JWT Token 中获取用户信息
+            // 1. 参数验证
+            if (pageNo < 1) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("页码必须大于0"));
+            }
+            if (pageSize < 1 || pageSize > 100) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("每页大小必须在1-100之间"));
+            }
+
+            // 2. 从 JWT Token 中获取用户信息
             String token = extractToken(authHeader);
             String encryptedUserId = jwtUtil.getEncryptedUserIdFromToken(token);
 
-            logger.info("查询历史记录，encryptedUserId: {}", encryptedUserId);
+            logger.info("查询历史记录，encryptedUserId: {}, pageNo: {}, pageSize: {}, type: {}",
+                encryptedUserId, pageNo, pageSize, type);
 
-            // 2. 获取用户详细信息并检查状态
+            // 3. 获取用户详细信息并检查状态
             WebUser user;
             try {
                 user = authService.getUserByEncryptedId(encryptedUserId);
@@ -501,19 +541,36 @@ public class WebAuthController {
                     .body(ApiResponse.error("用户信息获取失败"));
             }
 
-            // 3. 检查用户账户状态
+            // 4. 检查用户账户状态
             if (!user.getActive()) {
                 logger.warn("用户账户已被禁用, userId: {}", encryptedUserId);
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error("账户已被禁用"));
             }
 
-            // 4. 查询历史记录
-            java.util.List<LifeAIResult> results = lifeAIResultRepository
-                .findByUserIdOrderByCreateTimeDesc(user.getId());
+            // 5. 创建分页对象（Spring Data JPA 的页码从0开始）
+            org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(
+                    pageNo - 1,
+                    pageSize,
+                    org.springframework.data.domain.Sort.by(
+                        org.springframework.data.domain.Sort.Direction.DESC, "createTime"
+                    )
+                );
 
-            // 5. 转换为响应对象（不包含 user_id）
-            java.util.List<LifeAIHistoryResponse> historyList = results.stream()
+            // 6. 根据类型查询数据
+            org.springframework.data.domain.Page<LifeAIResult> resultPage;
+            if ("all".equalsIgnoreCase(type)) {
+                // 查询所有类型
+                resultPage = lifeAIResultRepository.findByUserIdOrderByCreateTimeDesc(user.getId(), pageable);
+            } else {
+                // 按指定类型查询
+                resultPage = lifeAIResultRepository.findByUserIdAndCategoryOrderByCreateTimeDesc(
+                    user.getId(), type, pageable);
+            }
+
+            // 7. 转换为响应对象（不包含 user_id）
+            java.util.List<LifeAIHistoryResponse> historyList = resultPage.getContent().stream()
                 .map(r -> new LifeAIHistoryResponse(
                     r.getId(),
                     r.getQuestion(),
@@ -526,12 +583,66 @@ public class WebAuthController {
                 ))
                 .collect(java.util.stream.Collectors.toList());
 
-            logger.info("查询到 {} 条历史记录，用户ID: {}", historyList.size(), user.getId());
+            // 8. 构建分页响应
+            PageResponse<LifeAIHistoryResponse> pageResponse = new PageResponse<>(
+                historyList,
+                pageNo,
+                pageSize,
+                resultPage.getTotalElements(),
+                resultPage.getTotalPages(),
+                resultPage.hasNext(),
+                resultPage.hasPrevious()
+            );
 
-            return ResponseEntity.ok(ApiResponse.success(historyList, "查询成功"));
+            logger.info("查询到 {} 条历史记录（第{}/{}页），用户ID: {}, 类型: {}",
+                historyList.size(), pageNo, resultPage.getTotalPages(), user.getId(), type);
+
+            return ResponseEntity.ok(ApiResponse.success(pageResponse, "查询成功"));
 
         } catch (Exception e) {
             logger.error("查询历史记录失败", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("查询失败：" + e.getMessage()));
+        }
+    }
+
+    /**
+     * 获取用户免费体验次数
+     * GET /api/web-auth/freeCount
+     */
+    @GetMapping("/freeCount")
+    public ResponseEntity<ApiResponse<Integer>> getFreeCount(
+            @RequestHeader("Authorization") String authHeader) {
+
+        try {
+            // 1. 从 JWT Token 中获取用户信息
+            String token = extractToken(authHeader);
+            String encryptedUserId = jwtUtil.getEncryptedUserIdFromToken(token);
+
+            logger.info("查询免费次数，encryptedUserId: {}", encryptedUserId);
+
+            // 2. 获取用户详细信息
+            WebUser user;
+            try {
+                user = authService.getUserByEncryptedId(encryptedUserId);
+            } catch (Exception e) {
+                logger.error("获取用户信息失败, encryptedUserId: {}", encryptedUserId, e);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("用户信息获取失败"));
+            }
+
+            // 3. 获取免费次数，确保不为负数
+            Integer freeCount = user.getFreeCount();
+            if (freeCount == null || freeCount < 0) {
+                freeCount = 0;
+            }
+
+            logger.info("用户免费次数: {}, 用户ID: {}", freeCount, user.getId());
+
+            return ResponseEntity.ok(ApiResponse.success(freeCount, "查询成功"));
+
+        } catch (Exception e) {
+            logger.error("查询免费次数失败", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error("查询失败：" + e.getMessage()));
         }

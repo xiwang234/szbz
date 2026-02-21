@@ -104,7 +104,8 @@ public class LiuRenService {
             result.setSiKe(siKe);
 
             // 4. 三传（需要传入月将和占时来判断伏吟反吟）
-            SanChuan sanChuan = calculateSanChuan(dayPillar, siKe, tianDiPan, yueJiang, hourZhi);
+            SanChuan sanChuan = calculateSanChuan(yearPillar, monthPillar, dayPillar, hourPillar,
+                                                   siKe, tianDiPan, yueJiang, hourZhi);
             result.setSanChuan(sanChuan);
 
             // 转换为JSON字符串
@@ -390,7 +391,8 @@ public class LiuRenService {
      * @param hourZhi 占时
      * @return 三传
      */
-    private SanChuan calculateSanChuan(Pillar dayPillar, SiKe siKe, TianDiPan tianDiPan,
+    private SanChuan calculateSanChuan(Pillar yearPillar, Pillar monthPillar, Pillar dayPillar, Pillar hourPillar,
+                                       SiKe siKe, TianDiPan tianDiPan,
                                        String yueJiang, String hourZhi) {
         String dayGan = dayPillar.getTianGan();
         String dayZhi = dayPillar.getDiZhi();
@@ -515,7 +517,7 @@ public class LiuRenService {
         String chuChuanTianJiang = getTianJiangByTianPan(chuChuanZhi, tianDiPan);
         WuXing chuChuanWuXing = WuXing.fromDiZhi(chuChuanZhi);
         LiuQin chuChuanLiuQin = dayGanWuXing.getLiuQin(chuChuanWuXing);
-        String chuChuanShenSha = getShenSha(chuChuanZhi, dayZhi);
+        String chuChuanShenSha = getShenSha(chuChuanZhi, yearPillar, monthPillar, dayPillar, hourPillar);
 
         Chuan chuChuan = new Chuan(
             chuChuanLiuQin.getName(),
@@ -531,7 +533,7 @@ public class LiuRenService {
         String zhongChuanTianJiang = getTianJiangByTianPan(zhongChuanZhi, tianDiPan);
         WuXing zhongChuanWuXing = WuXing.fromDiZhi(zhongChuanZhi);
         LiuQin zhongChuanLiuQin = dayGanWuXing.getLiuQin(zhongChuanWuXing);
-        String zhongChuanShenSha = getShenSha(zhongChuanZhi, dayZhi);
+        String zhongChuanShenSha = getShenSha(zhongChuanZhi, yearPillar, monthPillar, dayPillar, hourPillar);
 
         Chuan zhongChuan = new Chuan(
             zhongChuanLiuQin.getName(),
@@ -547,7 +549,7 @@ public class LiuRenService {
         String moChuanTianJiang = getTianJiangByTianPan(moChuanZhi, tianDiPan);
         WuXing moChuanWuXing = WuXing.fromDiZhi(moChuanZhi);
         LiuQin moChuanLiuQin = dayGanWuXing.getLiuQin(moChuanWuXing);
-        String moChuanShenSha = getShenSha(moChuanZhi, dayZhi);
+        String moChuanShenSha = getShenSha(moChuanZhi, yearPillar, monthPillar, dayPillar, hourPillar);
 
         Chuan moChuan = new Chuan(
             moChuanLiuQin.getName(),
@@ -925,140 +927,553 @@ public class LiuRenService {
     }
 
     /**
-     * 获取神煞（扩展版）
-     * 返回所有匹配的神煞，用斜杠分隔
+     * 获取神煞（完整版）
+     * 根据传支、年月日时四柱信息，判断所有相关神煞
+     *
+     * @param chuanZhi 传的地支
+     * @param yearPillar 年柱
+     * @param monthPillar 月柱
+     * @param dayPillar 日柱
+     * @param hourPillar 时柱
+     * @return 所有匹配的神煞，用斜杠分隔
      */
-    private String getShenSha(String chuanZhi, String dayZhi) {
-        int chuanIndex = DiZhi.fromName(chuanZhi).getIndex();
-        int dayIndex = DiZhi.fromName(dayZhi).getIndex();
+    private String getShenSha(String chuanZhi, Pillar yearPillar, Pillar monthPillar,
+                             Pillar dayPillar, Pillar hourPillar) {
         List<String> shenShaList = new ArrayList<>();
 
-        // 天马：寅午戌马在申，巳酉丑马在亥，申子辰马在寅，亥卯未马在巳
-        if ((dayIndex == 2 || dayIndex == 6 || dayIndex == 10) && chuanIndex == 8) {
-            shenShaList.add("天马");
-        }
-        if ((dayIndex == 5 || dayIndex == 9 || dayIndex == 1) && chuanIndex == 11) {
-            shenShaList.add("天马");
-        }
-        if ((dayIndex == 8 || dayIndex == 0 || dayIndex == 4) && chuanIndex == 2) {
-            shenShaList.add("天马");
-        }
-        if ((dayIndex == 11 || dayIndex == 3 || dayIndex == 7) && chuanIndex == 5) {
-            shenShaList.add("天马");
+        int chuanIndex = DiZhi.fromName(chuanZhi).getIndex();
+        String yearZhi = yearPillar.getDiZhi();
+        String monthZhi = monthPillar.getDiZhi();
+        String dayGan = dayPillar.getTianGan();
+        String dayZhi = dayPillar.getDiZhi();
+
+        int yearIndex = DiZhi.fromName(yearZhi).getIndex();
+        int monthIndex = DiZhi.fromName(monthZhi).getIndex();
+        int dayIndex = DiZhi.fromName(dayZhi).getIndex();
+
+        // ========== 1. 岁煞（基于年支）==========
+
+        // 太岁：年支本身
+        if (chuanIndex == yearIndex) {
+            shenShaList.add("太岁");
         }
 
-        // 桃花：寅午戌桃花在卯，巳酉丑桃花在午，申子辰桃花在酉，亥卯未桃花在子
-        if ((dayIndex == 2 || dayIndex == 6 || dayIndex == 10) && chuanIndex == 3) {
-            shenShaList.add("桃花");
-        }
-        if ((dayIndex == 5 || dayIndex == 9 || dayIndex == 1) && chuanIndex == 6) {
-            shenShaList.add("桃花");
-        }
-        if ((dayIndex == 8 || dayIndex == 0 || dayIndex == 4) && chuanIndex == 9) {
-            shenShaList.add("桃花");
-        }
-        if ((dayIndex == 11 || dayIndex == 3 || dayIndex == 7) && chuanIndex == 0) {
-            shenShaList.add("桃花");
+        // 岁破：太岁对冲
+        int suiPoIndex = (yearIndex + 6) % 12;
+        if (chuanIndex == suiPoIndex) {
+            shenShaList.add("岁破");
         }
 
-        // 吊客：日支的后两位（顺数）
-        // 例如：日支寅(2)，后两位是辰(4)
-        int diaKeIndex = (dayIndex + 2) % 12;
-        if (chuanIndex == diaKeIndex) {
-            shenShaList.add("吊客");
+        // 病符：旧年太岁（去年的太岁，即今年太岁的前一位）
+        int bingFuIndex = (yearIndex - 1 + 12) % 12;
+        if (chuanIndex == bingFuIndex) {
+            shenShaList.add("病符");
         }
 
-        // 丧门：日支的前两位（逆数）
-        int sangMenIndex = (dayIndex - 2 + 12) % 12;
+        // 丧门：太岁后两位
+        int sangMenIndex = (yearIndex + 2) % 12;
         if (chuanIndex == sangMenIndex) {
             shenShaList.add("丧门");
         }
 
-        // 死神：按三合局的前一位
-        // 寅午戌见巳，巳酉丑见申，申子辰见亥，亥卯未见寅
-        if ((dayIndex == 2 || dayIndex == 6 || dayIndex == 10) && chuanIndex == 5) {
-            shenShaList.add("死神");
-        }
-        if ((dayIndex == 5 || dayIndex == 9 || dayIndex == 1) && chuanIndex == 8) {
-            shenShaList.add("死神");
-        }
-        if ((dayIndex == 8 || dayIndex == 0 || dayIndex == 4) && chuanIndex == 11) {
-            shenShaList.add("死神");
-        }
-        if ((dayIndex == 11 || dayIndex == 3 || dayIndex == 7) && chuanIndex == 2) {
-            shenShaList.add("死神");
+        // 吊客：太岁前两位
+        int diaoKeIndex = (yearIndex - 2 + 12) % 12;
+        if (chuanIndex == diaoKeIndex) {
+            shenShaList.add("吊客");
         }
 
-        // 病符：按三合局的后一位
-        // 寅午戌见未，巳酉丑见戌，申子辰见丑，亥卯未见辰
-        if ((dayIndex == 2 || dayIndex == 6 || dayIndex == 10) && chuanIndex == 7) {
-            shenShaList.add("病符");
-        }
-        if ((dayIndex == 5 || dayIndex == 9 || dayIndex == 1) && chuanIndex == 10) {
-            shenShaList.add("病符");
-        }
-        if ((dayIndex == 8 || dayIndex == 0 || dayIndex == 4) && chuanIndex == 1) {
-            shenShaList.add("病符");
-        }
-        if ((dayIndex == 11 || dayIndex == 3 || dayIndex == 7) && chuanIndex == 4) {
-            shenShaList.add("病符");
+        // 官符：太岁三合前辰
+        // 巳酉丑合，巳前辰酉；申子辰合，申前辰子；亥卯未合，亥前辰卯；寅午戌合，寅前辰午
+        int guanFuIndex = getSanHeQianChen(yearIndex);
+        if (guanFuIndex != -1 && chuanIndex == guanFuIndex) {
+            shenShaList.add("官符");
         }
 
-        // 日德：甲寅、丙辰、戊辰、庚辰、壬戌为日德
-        // 简化处理：传支为寅、辰、戌时可能是日德
-        if (chuanIndex == 2 || chuanIndex == 4 || chuanIndex == 10) {
-            shenShaList.add("日德");
+        // 白虎：太岁三合后辰
+        int baiHuIndex = getSanHeHouChen(yearIndex);
+        if (baiHuIndex != -1 && chuanIndex == baiHuIndex) {
+            shenShaList.add("白虎");
         }
 
-        // 成神：传支与日支相合
-        // 子丑合、寅亥合、卯戌合、辰酉合、巳申合、午未合
-        int heIndex = getHeZhi(dayIndex);
-        if (chuanIndex == heIndex) {
-            shenShaList.add("成神");
+        // 岁墓：太岁后五辰
+        int suiMuIndex = (yearIndex + 5) % 12;
+        if (chuanIndex == suiMuIndex) {
+            shenShaList.add("岁墓");
         }
 
-        // 死气：传支与日支相冲
-        int chongIndex = (dayIndex + 6) % 12;
-        if (chuanIndex == chongIndex) {
+        // ========== 2. 季煞（基于月份季节）==========
+
+        // 判断季节：寅卯辰春，巳午未夏，申酉戌秋，亥子丑冬
+        int season = getSeason(monthIndex);
+
+        // 天喜：春戌、夏丑、秋辰、冬未
+        int tianXiIndex = -1;
+        switch (season) {
+            case 0: tianXiIndex = 10; break; // 春戌
+            case 1: tianXiIndex = 1; break;  // 夏丑
+            case 2: tianXiIndex = 4; break;  // 秋辰
+            case 3: tianXiIndex = 7; break;  // 冬未
+        }
+        if (chuanIndex == tianXiIndex) {
+            shenShaList.add("天喜");
+        }
+
+        // 孤辰、寡宿：春巳/丑，夏申/辰，秋亥/未，冬寅/戌
+        int guChenIndex = -1, guaSuIndex = -1;
+        switch (season) {
+            case 0: guChenIndex = 5; guaSuIndex = 1; break;  // 春巳/丑
+            case 1: guChenIndex = 8; guaSuIndex = 4; break;  // 夏申/辰
+            case 2: guChenIndex = 11; guaSuIndex = 7; break; // 秋亥/未
+            case 3: guChenIndex = 2; guaSuIndex = 10; break; // 冬寅/戌
+        }
+        if (chuanIndex == guChenIndex) {
+            shenShaList.add("孤辰");
+        }
+        if (chuanIndex == guaSuIndex) {
+            shenShaList.add("寡宿");
+            shenShaList.add("关神");
+            shenShaList.add("三丘");
+        }
+
+        // 五墓：三丘对冲
+        int wuMuIndex = (guaSuIndex + 6) % 12;
+        if (chuanIndex == wuMuIndex) {
+            shenShaList.add("五墓");
+        }
+
+        // 皇书/战雄：春寅、夏巳、秋申、冬亥（四孟）
+        int huangShuIndex = -1;
+        switch (season) {
+            case 0: huangShuIndex = 2; break;  // 春寅
+            case 1: huangShuIndex = 5; break;  // 夏巳
+            case 2: huangShuIndex = 8; break;  // 秋申
+            case 3: huangShuIndex = 11; break; // 冬亥
+        }
+        if (chuanIndex == huangShuIndex) {
+            shenShaList.add("皇书");
+            shenShaList.add("战雄");
+        }
+        // 战雌：皇书对冲
+        int zhanCiIndex = (huangShuIndex + 6) % 12;
+        if (chuanIndex == zhanCiIndex) {
+            shenShaList.add("战雌");
+        }
+
+        // 浴盆/天目：春辰、夏未、秋戌、冬丑（四季）
+        int yuPenIndex = -1;
+        switch (season) {
+            case 0: yuPenIndex = 4; break;  // 春辰
+            case 1: yuPenIndex = 7; break;  // 夏未
+            case 2: yuPenIndex = 10; break; // 秋戌
+            case 3: yuPenIndex = 1; break;  // 冬丑
+        }
+        if (chuanIndex == yuPenIndex) {
+            shenShaList.add("浴盆");
+            shenShaList.add("天目");
+        }
+
+        // 火鬼：春午、夏酉、秋子、冬卯
+        int huoGuiIndex = -1;
+        switch (season) {
+            case 0: huoGuiIndex = 6; break;  // 春午
+            case 1: huoGuiIndex = 9; break;  // 夏酉
+            case 2: huoGuiIndex = 0; break;  // 秋子
+            case 3: huoGuiIndex = 3; break;  // 冬卯
+        }
+        if (chuanIndex == huoGuiIndex) {
+            shenShaList.add("火鬼");
+        }
+
+        // 丧车：春酉、夏子、秋卯、冬午
+        int sangCheIndex = -1;
+        switch (season) {
+            case 0: sangCheIndex = 9; break;  // 春酉
+            case 1: sangCheIndex = 0; break;  // 夏子
+            case 2: sangCheIndex = 3; break;  // 秋卯
+            case 3: sangCheIndex = 6; break;  // 冬午
+        }
+        if (chuanIndex == sangCheIndex) {
+            shenShaList.add("丧车");
+        }
+
+        // 天赦：春寅、夏午、秋申、冬子
+        int tianSheIndex = -1;
+        switch (season) {
+            case 0: tianSheIndex = 2; break;  // 春寅
+            case 1: tianSheIndex = 6; break;  // 夏午
+            case 2: tianSheIndex = 8; break;  // 秋申
+            case 3: tianSheIndex = 0; break;  // 冬子
+        }
+        if (chuanIndex == tianSheIndex) {
+            shenShaList.add("天赦");
+        }
+
+        // 游神：春丑、夏子、秋亥、冬戌
+        int youShenIndex = -1;
+        switch (season) {
+            case 0: youShenIndex = 1; break;  // 春丑
+            case 1: youShenIndex = 0; break;  // 夏子
+            case 2: youShenIndex = 11; break; // 秋亥
+            case 3: youShenIndex = 10; break; // 冬戌
+        }
+        if (chuanIndex == youShenIndex) {
+            shenShaList.add("游神");
+        }
+
+        // 戏神：春巳、夏子、秋酉、冬辰
+        int xiShenIndex = -1;
+        switch (season) {
+            case 0: xiShenIndex = 5; break;  // 春巳
+            case 1: xiShenIndex = 0; break;  // 夏子
+            case 2: xiShenIndex = 9; break;  // 秋酉
+            case 3: xiShenIndex = 4; break;  // 冬辰
+        }
+        if (chuanIndex == xiShenIndex) {
+            shenShaList.add("戏神");
+        }
+
+        // 贼伏：春卯、夏巳、秋申、冬子
+        int zeiFuIndex = -1;
+        switch (season) {
+            case 0: zeiFuIndex = 3; break;  // 春卯
+            case 1: zeiFuIndex = 5; break;  // 夏巳
+            case 2: zeiFuIndex = 8; break;  // 秋申
+            case 3: zeiFuIndex = 0; break;  // 冬子
+        }
+        if (chuanIndex == zeiFuIndex) {
+            shenShaList.add("贼伏");
+        }
+
+        // ========== 3. 月煞（基于月支）==========
+
+        // 生气：月建后二辰（逆数两位）
+        // 如寅月子为生气：寅(2) - 2 = 0(子)
+        int shengQiIndex = (monthIndex - 2 + 12) % 12;
+        if (chuanIndex == shengQiIndex) {
+            shenShaList.add("生气");
+        }
+
+        // 死气：月建三合前一辰（顺数四位），等同于生气对冲
+        // 如寅月午为死气：寅(2) + 4 = 6(午)，或子(0) + 6 = 6(午)
+        int siQiIndex = (monthIndex + 4) % 12;  // 或 (shengQiIndex + 6) % 12
+        if (chuanIndex == siQiIndex) {
             shenShaList.add("死气");
         }
 
-        // 太岁：传支与年支相同（这里简化，实际应该传入年支）
-        // 暂时按传支为当前支来判断
-        // 由于没有年支信息，这里暂不实现准确判断
-        // 如果传支与日支相同，作为一个简化的太岁标志
-        if (chuanIndex == dayIndex) {
-            shenShaList.add("太岁");
+        // 死神：死气后一位
+        int siShenIndex = (siQiIndex + 1) % 12;
+        if (chuanIndex == siShenIndex) {
+            shenShaList.add("死神");
         }
 
-        // 皇恩：简化处理，传支与日支相同
-        // 注意：太岁和皇恩条件相同，这里保留原有逻辑
-        if (chuanIndex == dayIndex) {
+        // 天医：寅月起辰顺行十二辰
+        int tianYiIndex = (4 + (monthIndex - 2 + 12)) % 12; // 寅月(2)起辰(4)
+        if (chuanIndex == tianYiIndex) {
+            shenShaList.add("天医");
+            shenShaList.add("天巫");
+        }
+
+        // 地医：天医对冲
+        int diYiIndex = (tianYiIndex + 6) % 12;
+        if (chuanIndex == diYiIndex) {
+            shenShaList.add("地医");
+        }
+
+        // 飞魂：正月起亥顺行
+        int feiHunIndex = (11 + (monthIndex - 2 + 12)) % 12; // 正月(寅月)起亥
+        if (chuanIndex == feiHunIndex) {
+            shenShaList.add("飞魂");
+        }
+
+        // 天诏：同飞魂
+        if (chuanIndex == feiHunIndex) {
+            shenShaList.add("天诏");
+        }
+
+        // 月厌：寅月起戌逆行
+        int yueYanIndex = (10 - (monthIndex - 2 + 12)) % 12; // 寅月(2)起戌(10)
+        if (chuanIndex == yueYanIndex) {
+            shenShaList.add("月厌");
+        }
+
+        // 天马：寅月起午顺行六阳辰
+        // 六阳辰 = 子寅辰午申戌(0,2,4,6,8,10)
+        // 寅月(2)→午(6), 卯月(3)→申(8), 辰月(4)→戌(10), 巳月(5)→子(0), 午月(6)→寅(2), 未月(7)→辰(4)
+        // 申月(8)→午(6), 酉月(9)→申(8), 戌月(10)→戌(10), 亥月(11)→子(0), 子月(0)→寅(2), 丑月(1)→辰(4)
+        // 规律：从寅月起午(月2→地支6)开始，每月前进2位，只落在六阳辰上
+        int tianMaIndex = (6 + 2 * (monthIndex - 2 + 12)) % 12;
+        if (chuanIndex == tianMaIndex) {
+            shenShaList.add("天马");
+        }
+
+        // 皇恩：寅月起未顺行六阴辰
+        int huangEnIndex = -1;
+        if (monthIndex % 2 == 1) { // 阴月
+            huangEnIndex = (7 + (monthIndex - 3 + 12)) % 12; // 卯月起未
+        } else { // 阳月
+            huangEnIndex = (7 + (monthIndex - 2)) % 12; // 寅月起未
+        }
+        if (chuanIndex == huangEnIndex) {
             shenShaList.add("皇恩");
         }
 
-        return shenShaList.isEmpty() ? "无" : String.join("/", shenShaList);
-    }
-
-    /**
-     * 获取地支的六合
-     */
-    private int getHeZhi(int zhiIndex) {
-        switch (zhiIndex) {
-            case 0: return 1;  // 子丑合
-            case 1: return 0;  // 丑子合
-            case 2: return 11; // 寅亥合
-            case 3: return 10; // 卯戌合
-            case 4: return 9;  // 辰酉合
-            case 5: return 8;  // 巳申合
-            case 6: return 7;  // 午未合
-            case 7: return 6;  // 未午合
-            case 8: return 5;  // 申巳合
-            case 9: return 4;  // 酉辰合
-            case 10: return 3; // 戌卯合
-            case 11: return 2; // 亥寅合
-            default: return -1;
+        // 天鬼：正月起酉逆行四仲（子卯午酉）
+        // 寅午戌月见酉，亥卯未月见午，申子辰月见卯，巳酉丑月见子
+        int sanHeJu = getSanHeJu(monthIndex);
+        int tianGuiIndex = -1;
+        switch (sanHeJu) {
+            case 0: tianGuiIndex = 9; break;  // 寅午戌见酉
+            case 1: tianGuiIndex = 6; break;  // 亥卯未见午
+            case 2: tianGuiIndex = 3; break;  // 申子辰见卯
+            case 3: tianGuiIndex = 0; break;  // 巳酉丑见子
         }
+        if (chuanIndex == tianGuiIndex) {
+            shenShaList.add("天鬼");
+            shenShaList.add("长绳");
+        }
+
+        // 丧魄：正月起戌逆行四季
+        // 寅午戌见戌，亥卯未见未，申子辰见辰，巳酉丑见丑
+        int sangPoIndex = -1;
+        switch (sanHeJu) {
+            case 0: sangPoIndex = 10; break; // 寅午戌见戌
+            case 1: sangPoIndex = 7; break;  // 亥卯未见未
+            case 2: sangPoIndex = 4; break;  // 申子辰见辰
+            case 3: sangPoIndex = 1; break;  // 巳酉丑见丑
+        }
+        if (chuanIndex == sangPoIndex) {
+            shenShaList.add("丧魄");
+            shenShaList.add("迷惑");
+        }
+
+        // 天鸡：正月起酉逆行
+        int tianJiIndex = (9 - (monthIndex - 2 + 12)) % 12; // 正月(寅月)起酉
+        if (chuanIndex == tianJiIndex) {
+            shenShaList.add("天鸡");
+        }
+
+        // 信神：正月起酉顺行
+        int xinShenIndex = (9 + (monthIndex - 2 + 12)) % 12;
+        if (chuanIndex == xinShenIndex) {
+            shenShaList.add("信神");
+        }
+
+        // 天财：正月起辰顺行六阳辰
+        int tianCaiIndex = (4 + (monthIndex - 2 + 12)) % 12;
+        if (chuanIndex == tianCaiIndex) {
+            shenShaList.add("天财");
+        }
+
+        // 血支：月建后一辰（月病符）
+        int xueZhiIndex = (monthIndex + 1) % 12;
+        if (chuanIndex == xueZhiIndex) {
+            shenShaList.add("血支");
+        }
+
+        // 血忌：六阳月从丑至午，六阴月从未至子
+        int xueJiIndex = -1;
+        if (monthIndex % 2 == 0) { // 阳月：寅辰午申戌子
+            // 正月丑、三月寅、五月卯、七月辰、九月巳、冬月午
+            xueJiIndex = (1 + (monthIndex - 2) / 2) % 12;
+        } else { // 阴月：卯巳未酉亥丑
+            // 二月未、四月申、六月酉、八月戌、十月亥、腊月子
+            xueJiIndex = (7 + (monthIndex - 3) / 2) % 12;
+        }
+        if (chuanIndex == xueJiIndex) {
+            shenShaList.add("血忌");
+        }
+
+        // 悬锁：月桃花（同支煞桃花）
+        int xuanSuoIndex = getTaoHua(monthIndex);
+        if (chuanIndex == xuanSuoIndex) {
+            shenShaList.add("悬锁");
+        }
+
+        // 奸门、阴奸
+        int jianMenIndex = -1, yinJianIndex = -1;
+        switch (sanHeJu) {
+            case 0: jianMenIndex = 8; yinJianIndex = 7; break;  // 寅午戌：申/未
+            case 1: jianMenIndex = 11; yinJianIndex = 4; break; // 亥卯未：亥/辰
+            case 2: jianMenIndex = 2; yinJianIndex = 1; break;  // 申子辰：寅/丑
+            case 3: jianMenIndex = 5; yinJianIndex = 10; break; // 巳酉丑：巳/戌
+        }
+        if (chuanIndex == jianMenIndex) {
+            shenShaList.add("奸门");
+        }
+        if (chuanIndex == yinJianIndex) {
+            shenShaList.add("阴奸");
+        }
+
+        // 谩语：同死气
+        // 已在死气中添加
+
+        // 成神
+        int chengShenIndex = -1;
+        switch (sanHeJu) {
+            case 0: chengShenIndex = 5; break;  // 寅午戌月巳
+            case 1: chengShenIndex = 8; break;  // 亥卯未月申
+            case 2: chengShenIndex = 11; break; // 申子辰月亥
+            case 3: chengShenIndex = 2; break;  // 巳酉丑月寅
+        }
+        if (chuanIndex == chengShenIndex) {
+            shenShaList.add("成神");
+        }
+
+        // ========== 4. 旬煞（基于日干支的旬）==========
+
+        // 计算旬首（日干支所在的旬）
+        int dayGanIndex = TianGan.fromName(dayGan).getIndex();
+        int xunShouIndex = getXunShou(dayGanIndex, dayIndex);
+
+        // 旬空：旬中最后两个地支
+        int kongWang1 = (xunShouIndex + 10) % 12;
+        int kongWang2 = (xunShouIndex + 11) % 12;
+        if (chuanIndex == kongWang1 || chuanIndex == kongWang2) {
+            shenShaList.add("旬空");
+            shenShaList.add("天中");
+        }
+
+        // 旬奇：甲子甲戌旬奇亥，甲申甲午旬奇子，甲辰甲寅旬奇丑
+        int xunQiIndex = -1;
+        switch (xunShouIndex) {
+            case 0:  // 甲子旬
+            case 10: // 甲戌旬
+                xunQiIndex = 11; break; // 亥
+            case 8:  // 甲申旬
+            case 6:  // 甲午旬
+                xunQiIndex = 0; break;  // 子
+            case 4:  // 甲辰旬
+            case 2:  // 甲寅旬
+                xunQiIndex = 1; break;  // 丑
+        }
+        if (chuanIndex == xunQiIndex) {
+            shenShaList.add("旬奇");
+        }
+
+        // 旬仪：六旬地支（旬首地支）
+        if (chuanIndex == xunShouIndex) {
+            shenShaList.add("旬仪");
+        }
+
+        // 丁马/六丁：每旬六丁之辰
+        int dingMaIndex = getDingMa(xunShouIndex);
+        if (dingMaIndex != -1 && chuanIndex == dingMaIndex) {
+            shenShaList.add("丁马");
+            shenShaList.add("六丁");
+        }
+
+        // 旬癸/闭口：每旬六癸之辰
+        int xunGuiIndex = getXunGui(xunShouIndex);
+        if (xunGuiIndex != -1 && chuanIndex == xunGuiIndex) {
+            shenShaList.add("旬癸");
+            shenShaList.add("闭口");
+        }
+
+        // 旬乙/盗神：每旬六乙之辰
+        int xunYiIndex = getXunYi(xunShouIndex);
+        if (xunYiIndex != -1 && chuanIndex == xunYiIndex) {
+            shenShaList.add("旬乙");
+            shenShaList.add("盗神");
+        }
+
+        // 旬辛：每旬六辛之辰
+        int xunXinIndex = getXunXin(xunShouIndex);
+        if (xunXinIndex != -1 && chuanIndex == xunXinIndex) {
+            shenShaList.add("旬辛");
+        }
+
+        // ========== 5. 干煞（基于日干）==========
+
+        // 干德
+        int ganDeIndex = -1;
+        switch (dayGan) {
+            case "甲": case "己": ganDeIndex = 2; break;  // 寅
+            case "乙": case "庚": ganDeIndex = 8; break;  // 申
+            case "丙": case "辛": ganDeIndex = 5; break;  // 巳
+            case "丁": case "壬": ganDeIndex = 11; break; // 亥
+            case "戊": case "癸": ganDeIndex = 5; break;  // 巳
+        }
+        if (chuanIndex == ganDeIndex) {
+            shenShaList.add("干德");
+            shenShaList.add("日德");
+        }
+
+        // 游都
+        int youDuIndex = -1;
+        switch (dayGan) {
+            case "甲": case "己": youDuIndex = 1; break;  // 丑
+            case "乙": case "庚": youDuIndex = 0; break;  // 子
+            case "丙": case "辛": youDuIndex = 2; break;  // 寅
+            case "丁": case "壬": youDuIndex = 5; break;  // 巳
+            case "戊": case "癸": youDuIndex = 8; break;  // 申
+        }
+        if (chuanIndex == youDuIndex) {
+            shenShaList.add("游都");
+        }
+
+        // 鲁都：游都对冲
+        int luDuIndex = (youDuIndex + 6) % 12;
+        if (chuanIndex == luDuIndex) {
+            shenShaList.add("鲁都");
+        }
+
+        // ========== 6. 支煞（基于日支）==========
+
+        // 驿马：三合头冲
+        int yiMaIndex = getYiMa(dayIndex);
+        if (chuanIndex == yiMaIndex) {
+            shenShaList.add("驿马");
+        }
+
+        // 劫煞
+        int jieShaIndex = getJieSha(dayIndex);
+        if (chuanIndex == jieShaIndex) {
+            shenShaList.add("劫煞");
+        }
+
+        // 亡神
+        int wangShenIndex = getWangShen(dayIndex);
+        if (chuanIndex == wangShenIndex) {
+            shenShaList.add("亡神");
+        }
+
+        // 破碎煞
+        int poSuiIndex = getPoSui(dayIndex);
+        if (poSuiIndex != -1 && chuanIndex == poSuiIndex) {
+            shenShaList.add("破碎");
+        }
+
+        // 华盖
+        int huaGaiIndex = getHuaGai(dayIndex);
+        if (chuanIndex == huaGaiIndex) {
+            shenShaList.add("华盖");
+        }
+
+        // 桃花煞
+        int taoHuaIndex = getTaoHua(dayIndex);
+        if (chuanIndex == taoHuaIndex) {
+            shenShaList.add("桃花");
+        }
+
+        // 将星
+        int jiangXingIndex = getJiangXing(dayIndex);
+        if (chuanIndex == jiangXingIndex) {
+            shenShaList.add("将星");
+        }
+
+        // 灾煞
+        int zaiShaIndex = getZaiSha(dayIndex);
+        if (chuanIndex == zaiShaIndex) {
+            shenShaList.add("灾煞");
+        }
+
+        // ========== 返回结果 ==========
+
+        if (shenShaList.isEmpty()) {
+            return "无";
+        }
+
+        return String.join("/", shenShaList);
     }
 
     /**
@@ -1194,5 +1609,248 @@ public class LiuRenService {
         } else {
             return ganZhiYear + "女命";
         }
+    }
+
+    // ========== 神煞辅助方法 ==========
+
+    /**
+     * 获取季节：0春、1夏、2秋、3冬
+     */
+    private int getSeason(int monthIndex) {
+        // 寅卯辰春(2,3,4)，巳午未夏(5,6,7)，申酉戌秋(8,9,10)，亥子丑冬(11,0,1)
+        if (monthIndex >= 2 && monthIndex <= 4) return 0; // 春
+        if (monthIndex >= 5 && monthIndex <= 7) return 1; // 夏
+        if (monthIndex >= 8 && monthIndex <= 10) return 2; // 秋
+        return 3; // 冬
+    }
+
+    /**
+     * 获取三合局：0=寅午戌，1=亥卯未，2=申子辰，3=巳酉丑
+     */
+    private int getSanHeJu(int zhiIndex) {
+        if (zhiIndex == 2 || zhiIndex == 6 || zhiIndex == 10) return 0; // 寅午戌
+        if (zhiIndex == 11 || zhiIndex == 3 || zhiIndex == 7) return 1; // 亥卯未
+        if (zhiIndex == 8 || zhiIndex == 0 || zhiIndex == 4) return 2; // 申子辰
+        if (zhiIndex == 5 || zhiIndex == 9 || zhiIndex == 1) return 3; // 巳酉丑
+        return 0;
+    }
+
+    /**
+     * 获取三合前辰
+     */
+    private int getSanHeQianChen(int zhiIndex) {
+        int ju = getSanHeJu(zhiIndex);
+        switch (ju) {
+            case 0: return 9;  // 寅午戌 → 酉
+            case 1: return 6;  // 亥卯未 → 午
+            case 2: return 3;  // 申子辰 → 卯
+            case 3: return 0;  // 巳酉丑 → 子
+        }
+        return -1;
+    }
+
+    /**
+     * 获取三合后辰
+     */
+    private int getSanHeHouChen(int zhiIndex) {
+        int ju = getSanHeJu(zhiIndex);
+        switch (ju) {
+            case 0: return 5;  // 寅午戌 → 巳
+            case 1: return 2;  // 亥卯未 → 寅
+            case 2: return 11; // 申子辰 → 亥
+            case 3: return 8;  // 巳酉丑 → 申
+        }
+        return -1;
+    }
+
+    /**
+     * 获取桃花
+     */
+    private int getTaoHua(int zhiIndex) {
+        int ju = getSanHeJu(zhiIndex);
+        switch (ju) {
+            case 0: return 3;  // 寅午戌 → 卯
+            case 1: return 0;  // 亥卯未 → 子
+            case 2: return 9;  // 申子辰 → 酉
+            case 3: return 6;  // 巳酉丑 → 午
+        }
+        return -1;
+    }
+
+    /**
+     * 获取驿马
+     */
+    private int getYiMa(int zhiIndex) {
+        int ju = getSanHeJu(zhiIndex);
+        switch (ju) {
+            case 0: return 8;  // 寅午戌 → 申
+            case 1: return 5;  // 亥卯未 → 巳
+            case 2: return 2;  // 申子辰 → 寅
+            case 3: return 11; // 巳酉丑 → 亥
+        }
+        return -1;
+    }
+
+    /**
+     * 获取劫煞
+     */
+    private int getJieSha(int zhiIndex) {
+        int ju = getSanHeJu(zhiIndex);
+        switch (ju) {
+            case 0: return 11; // 寅午戌 → 亥
+            case 1: return 8;  // 亥卯未 → 申
+            case 2: return 5;  // 申子辰 → 巳
+            case 3: return 2;  // 巳酉丑 → 寅
+        }
+        return -1;
+    }
+
+    /**
+     * 获取亡神
+     */
+    private int getWangShen(int zhiIndex) {
+        int ju = getSanHeJu(zhiIndex);
+        switch (ju) {
+            case 0: return 5;  // 寅午戌 → 巳
+            case 1: return 2;  // 亥卯未 → 寅
+            case 2: return 11; // 申子辰 → 亥
+            case 3: return 8;  // 巳酉丑 → 申
+        }
+        return -1;
+    }
+
+    /**
+     * 获取破碎煞
+     */
+    private int getPoSui(int zhiIndex) {
+        // 寅申巳亥日在酉，卯子酉午日在巳，丑戌辰未日在丑
+        if (zhiIndex == 2 || zhiIndex == 8 || zhiIndex == 5 || zhiIndex == 11) {
+            return 9; // 酉
+        }
+        if (zhiIndex == 3 || zhiIndex == 0 || zhiIndex == 9 || zhiIndex == 6) {
+            return 5; // 巳
+        }
+        if (zhiIndex == 1 || zhiIndex == 10 || zhiIndex == 4 || zhiIndex == 7) {
+            return 1; // 丑
+        }
+        return -1;
+    }
+
+    /**
+     * 获取华盖
+     */
+    private int getHuaGai(int zhiIndex) {
+        int ju = getSanHeJu(zhiIndex);
+        switch (ju) {
+            case 0: return 10; // 寅午戌 → 戌
+            case 1: return 7;  // 亥卯未 → 未
+            case 2: return 4;  // 申子辰 → 辰
+            case 3: return 1;  // 巳酉丑 → 丑
+        }
+        return -1;
+    }
+
+    /**
+     * 获取将星
+     */
+    private int getJiangXing(int zhiIndex) {
+        int ju = getSanHeJu(zhiIndex);
+        switch (ju) {
+            case 0: return 6;  // 寅午戌 → 午
+            case 1: return 3;  // 亥卯未 → 卯
+            case 2: return 0;  // 申子辰 → 子
+            case 3: return 9;  // 巳酉丑 → 酉
+        }
+        return -1;
+    }
+
+    /**
+     * 获取灾煞
+     */
+    private int getZaiSha(int zhiIndex) {
+        int ju = getSanHeJu(zhiIndex);
+        switch (ju) {
+            case 0: return 0;  // 寅午戌 → 子
+            case 1: return 9;  // 亥卯未 → 酉
+            case 2: return 6;  // 申子辰 → 午
+            case 3: return 3;  // 巳酉丑 → 卯
+        }
+        return -1;
+    }
+
+    /**
+     * 计算旬首（日干支所在旬的第一个干支的地支index）
+     */
+    private int getXunShou(int ganIndex, int zhiIndex) {
+        // 旬首地支 = (地支 - 天干 + 12) % 12
+        return (zhiIndex - ganIndex + 12) % 12;
+    }
+
+    /**
+     * 获取六丁/丁马
+     */
+    private int getDingMa(int xunShouIndex) {
+        // 甲子旬丁卯(3)，甲戌旬丁丑(1)，甲申旬丁亥(11)，
+        // 甲午旬丁酉(9)，甲辰旬丁未(7)，甲寅旬丁巳(5)
+        switch (xunShouIndex) {
+            case 0:  return 3;  // 甲子旬 → 丁卯
+            case 10: return 1;  // 甲戌旬 → 丁丑
+            case 8:  return 11; // 甲申旬 → 丁亥
+            case 6:  return 9;  // 甲午旬 → 丁酉
+            case 4:  return 7;  // 甲辰旬 → 丁未
+            case 2:  return 5;  // 甲寅旬 → 丁巳
+        }
+        return -1;
+    }
+
+    /**
+     * 获取六癸/旬癸
+     */
+    private int getXunGui(int xunShouIndex) {
+        // 甲子旬癸酉(9)，甲戌旬癸未(7)，甲申旬癸巳(5)，
+        // 甲午旬癸卯(3)，甲辰旬癸丑(1)，甲寅旬癸亥(11)
+        switch (xunShouIndex) {
+            case 0:  return 9;  // 甲子旬 → 癸酉
+            case 10: return 7;  // 甲戌旬 → 癸未
+            case 8:  return 5;  // 甲申旬 → 癸巳
+            case 6:  return 3;  // 甲午旬 → 癸卯
+            case 4:  return 1;  // 甲辰旬 → 癸丑
+            case 2:  return 11; // 甲寅旬 → 癸亥
+        }
+        return -1;
+    }
+
+    /**
+     * 获取六乙/旬乙
+     */
+    private int getXunYi(int xunShouIndex) {
+        // 甲子旬乙丑(1)，甲戌旬乙亥(11)，甲申旬乙酉(9)，
+        // 甲午旬乙未(7)，甲辰旬乙巳(5)，甲寅旬乙卯(3)
+        switch (xunShouIndex) {
+            case 0:  return 1;  // 甲子旬 → 乙丑
+            case 10: return 11; // 甲戌旬 → 乙亥
+            case 8:  return 9;  // 甲申旬 → 乙酉
+            case 6:  return 7;  // 甲午旬 → 乙未
+            case 4:  return 5;  // 甲辰旬 → 乙巳
+            case 2:  return 3;  // 甲寅旬 → 乙卯
+        }
+        return -1;
+    }
+
+    /**
+     * 获取六辛/旬辛
+     */
+    private int getXunXin(int xunShouIndex) {
+        // 甲子旬辛未(7)，甲戌旬辛巳(5)，甲申旬辛卯(3)，
+        // 甲午旬辛丑(1)，甲辰旬辛亥(11)，甲寅旬辛酉(9)
+        switch (xunShouIndex) {
+            case 0:  return 7;  // 甲子旬 → 辛未
+            case 10: return 5;  // 甲戌旬 → 辛巳
+            case 8:  return 3;  // 甲申旬 → 辛卯
+            case 6:  return 1;  // 甲午旬 → 辛丑
+            case 4:  return 11; // 甲辰旬 → 辛亥
+            case 2:  return 9;  // 甲寅旬 → 辛酉
+        }
+        return -1;
     }
 }

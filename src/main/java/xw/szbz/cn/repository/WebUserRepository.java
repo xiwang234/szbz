@@ -1,8 +1,11 @@
 package xw.szbz.cn.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import xw.szbz.cn.entity.WebUser;
+
+import java.util.List;
 
 /**
  * Web用户数据访问接口
@@ -44,4 +47,10 @@ public interface WebUserRepository extends JpaRepository<WebUser, Long> {
      * 根据业务ID查找用户
      */
     WebUser findByBizId(String bizId);
+
+    /**
+     * 查询所有激活用户的ID和免费次数
+     */
+    @Query("SELECT new xw.szbz.cn.model.UserFreeCountDto(u.id, u.freeCount) FROM WebUser u WHERE u.active = true ORDER BY u.id")
+    List<xw.szbz.cn.model.UserFreeCountDto> findActiveUsersFreeCount();
 }

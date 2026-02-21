@@ -1,7 +1,6 @@
 package xw.szbz.cn.service;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -21,7 +20,6 @@ import xw.szbz.cn.model.RegisterRequest;
 import xw.szbz.cn.model.WebLoginRequest;
 import xw.szbz.cn.repository.WebUserRepository;
 import xw.szbz.cn.util.EnhancedJwtUtil;
-import xw.szbz.cn.util.EnhancedUserIdEncryption;
 import xw.szbz.cn.util.FieldEncryptionUtil;
 import xw.szbz.cn.util.PasswordHashUtil;
 
@@ -37,9 +35,6 @@ public class AuthService {
     
     @Autowired
     private EnhancedJwtUtil enhancedJwtUtil;
-    
-    @Autowired
-    private EnhancedUserIdEncryption userIdEncryption;
     
     @Autowired
     private FieldEncryptionUtil fieldEncryptionUtil;

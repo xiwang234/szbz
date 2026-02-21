@@ -109,13 +109,22 @@ stripe.webhook.secret=${STRIPE_WEBHOOK_SECRET:}
 stripe.checkout.success-url=http://localhost:3000/payment/success
 stripe.checkout.cancel-url=http://localhost:3000/payment/cancel
 
-# Email Configuration (Optional, for future use)
-spring.mail.host=${MAIL_HOST:smtp.gmail.com}
-spring.mail.port=${MAIL_PORT:587}
-spring.mail.username=${MAIL_USERNAME:}
-spring.mail.password=${MAIL_PASSWORD:}
+# Email Configuration
+# 163邮箱配置
+spring.mail.host=smtp.163.com
+spring.mail.port=465
+spring.mail.username=txw250@163.com
+spring.mail.password=ACasgm4Dk3Pw7YpH
 spring.mail.properties.mail.smtp.auth=true
 spring.mail.properties.mail.smtp.starttls.enable=true
+spring.mail.properties.mail.smtp.starttls.required=true
+spring.mail.properties.mail.smtp.ssl.enable=true
+spring.mail.default-encoding=UTF-8
+
+# Email Scheduled Task Configuration
+# 定时邮件任务配置
+email.scheduled.recipient=txw250@163.com
+email.scheduled.sender=txw250@163.com
 
 # Cache Configuration
 cache.token-blacklist.max-size=10000

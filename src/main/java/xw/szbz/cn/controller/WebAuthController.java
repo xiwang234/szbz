@@ -34,7 +34,6 @@ import xw.szbz.cn.repository.LifeAIResultRepository;
 import xw.szbz.cn.repository.UserSaltInfoRepository;
 import xw.szbz.cn.service.AuthService;
 import xw.szbz.cn.service.DataMaskingService;
-import xw.szbz.cn.service.GeminiService;
 import xw.szbz.cn.service.LiuRenService;
 import xw.szbz.cn.service.RandomSaltService;
 import xw.szbz.cn.util.EnhancedJwtUtil;
@@ -70,14 +69,10 @@ public class WebAuthController {
     private PromptTemplateUtil promptTemplateUtil;
 
     @Autowired
-    private GeminiService geminiService;
-
-    @Autowired
     private LifeAIResultRepository lifeAIResultRepository;
 
     @Autowired
     private UserSaltInfoRepository userSaltInfoRepository;
-
 
     private static final Logger logger = LoggerFactory.getLogger(WebAuthController.class);
     
@@ -647,7 +642,6 @@ public class WebAuthController {
                 .body(ApiResponse.error("查询失败：" + e.getMessage()));
         }
     }
-
 
     // ========== 私有辅助方法 ==========
 

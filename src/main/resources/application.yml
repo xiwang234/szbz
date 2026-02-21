@@ -1,0 +1,166 @@
+# Spring Boot Configuration
+spring:
+  application:
+    name: szbzApi
+
+  # Database Configuration - SQLite
+  datasource:
+    url: jdbc:sqlite:szbz.db
+    driver-class-name: org.sqlite.JDBC
+
+  # JPA Configuration
+  jpa:
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        # SQLite driver compatibility settings
+        jdbc:
+          use_get_generated_keys: false
+          get_generated_keys: false
+          batch_size: 0
+        temp:
+          use_jdbc_metadata_defaults: false
+        # Disable Hibernate sequences for SQLite
+        use_legacy_limit_handler: true
+        id:
+          new_generator_mappings: false
+          generator:
+            optimizer: none
+        schema_update:
+          auto_create_foreign_keys: false
+
+  # Email Configuration - 163 Mail
+  mail:
+    host: smtp.163.com
+    port: 465
+    username: txw250@163.com
+    password: ACasgm4Dk3Pw7YpH
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          ssl:
+            enable: true
+
+# Server Configuration
+server:
+  port: 8080
+
+# Logging Configuration
+logging:
+  config: classpath:logback-spring.xml
+  level:
+    root: INFO
+    xw.szbz.cn: INFO
+    org.springframework.web: INFO
+  file:
+    path: logs
+    name: logs/application.log
+
+# Gemini API Configuration
+gemini:
+  api:
+    key: AIzaSyAOexD_9JQNMMSKX698GjKXlU-pVBKo-mA
+    # Alternative: Use environment variable
+    # key: ${GEMINI_API_KEY}
+  model: gemini-2.5-flash
+  # Available models:
+  # - gemini-pro (recommended, stable)
+  # - gemini-2.0-flash-exp (experimental)
+
+# WeChat MiniProgram Configuration
+wechat:
+  miniapp:
+    app-id: wx4725394b76c26ee2
+    app-secret: eb695e6713208cec6925e9248cbf295a
+
+# JWT Configuration
+jwt:
+  secret: szbz-api-secret-key-for-wechat-miniprogram-authentication-2024
+  expiration: 86400000
+  # Enhanced JWT for Web App
+  access-token:
+    expiration: 3600000  # 1 hour
+  refresh-token:
+    expiration: 604800000  # 7 days
+
+# User ID Encryption Configuration (AES-256-GCM)
+user:
+  id:
+    encryption:
+      key: ${USER_ID_ENCRYPTION_KEY:your-encryption-key-32-chars-256bits}
+
+# Email Field Encryption Configuration (AES-256-GCM)
+field:
+  encryption:
+    key: ${FIELD_ENCRYPTION_KEY:your-field-encryption-key-32-chars}
+    iv:
+      salt: ${FIELD_ENCRYPTION_IV_SALT:your-iv-salt-for-deterministic-encryption}
+
+# Email Scheduled Task Configuration
+email:
+  scheduled:
+    recipient: txw250@163.com
+    sender: txw250@163.com
+
+# Business Log Configuration
+business:
+  log:
+    directory: syslog
+    enabled: true
+
+# Rate Limit Configuration
+rate:
+  limit:
+    enabled: true
+    wenji:
+      daily: 5
+    jitu:
+      daily: 5
+
+# Security Configuration
+security:
+  ip:
+    rate:
+      limit: 10  # requests per minute per IP
+    block:
+      threshold: 5  # block after N violations
+
+# Stripe Configuration
+stripe:
+  api:
+    secret-key: ${STRIPE_SECRET_KEY:}
+    publishable-key: ${STRIPE_PUBLISHABLE_KEY:}
+  webhook:
+    secret: ${STRIPE_WEBHOOK_SECRET:}
+  checkout:
+    success-url: http://localhost:3000/payment/success
+    cancel-url: http://localhost:3000/payment/cancel
+
+# Cache Configuration
+cache:
+  token-blacklist:
+    max-size: 10000
+  user-session:
+    max-size: 5000
+  rate-limit:
+    max-size: 50000
+
+# Password Security Configuration
+password:
+  fixed:
+    salt: ${PASSWORD_FIXED_SALT:szbz-fixed-salt-2024-secure-password}
+
+# API Sign Configuration
+api:
+  sign:
+    secret: ${API_SIGN_SECRET:szbz-api-sign-key-2026}
+    expiration: 300000  # 5 minutes in milliseconds

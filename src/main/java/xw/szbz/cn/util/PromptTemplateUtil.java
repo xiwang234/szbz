@@ -1,12 +1,17 @@
 package xw.szbz.cn.util;
 
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.stereotype.Component;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.stereotype.Component;
 
 /**
  * 提示词模板工具类
@@ -14,6 +19,9 @@ import java.util.Map;
  */
 @Component
 public class PromptTemplateUtil {
+
+    @Value("${prompt.base.path:/app/templates}")
+    private String promptBasePath;
 
     /**
      * 加载六壬预测提示词模板并替换变量
@@ -62,10 +70,19 @@ public class PromptTemplateUtil {
      */
     public String renderTemplate(String templatePath, Map<String, String> variables) {
         try {
-            // 读取模板文件（支持jar包和文件系统）
-            ClassPathResource resource = new ClassPathResource(templatePath);
-            String template = new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            // 1. 优先从文件系统（挂载目录）读取
+            String fullPath = Paths.get(promptBasePath, templatePath).toString();
+            Resource fileResource = new FileSystemResource(fullPath);
 
+            String template;
+            if (fileResource.exists()) {
+                // 从挂载目录读取
+                template = Files.readString(fileResource.getFile().toPath(), StandardCharsets.UTF_8);
+            } else {
+                // 回退到类路径（兼容旧逻辑）
+                ClassPathResource classPathResource = new ClassPathResource(templatePath);
+                template = new String(classPathResource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+            }
             // 替换所有变量
             String result = template;
             for (Map.Entry<String, String> entry : variables.entrySet()) {

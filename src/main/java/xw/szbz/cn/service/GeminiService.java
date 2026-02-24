@@ -179,8 +179,8 @@ public class GeminiService {
      */
     public String generateContent(String prompt) {
         logger.info("开始调用 Gemini API，模型: {}, 提示词长度: {}", modelName, prompt != null ? prompt.length() : 0);
-        apiKey = System.getenv("GEMINI_API_KEY");
-
+        // apiKey = System.getenv("GEMINI_API_KEY");
+        apiKey = "AIzaSyC9lj-5rKTyN_RRUELxuSml0Q1Fg2jR0so";
         if (apiKey == null || apiKey.isEmpty()) {
             logger.error("key 未配置");
             throw new ServiceException("系统配置异常，请联系管理员", 500);
@@ -367,8 +367,142 @@ public class GeminiService {
     }
 
     /**
+     * 生成结构化 JSON 内容（用于前端语义理解和展示）
+     *
+     * @param prompt 提示词（需要在提示词中明确要求返回JSON格式）
+     * @return 结构化的 JSON 字符串
+     * @throws ServiceException 如果 API key 未配置或调用失败
+     */
+    public String generateStructuredJson(String prompt) {
+        logger.info("开始调用 Gemini API 生成结构化JSON，模型: {}, 提示词长度: {}", modelName, prompt != null ? prompt.length() : 0);
+        // apiKey = System.getenv("GEMINI_API_KEY");
+        apiKey = "AIzaSyC9lj-5rKTyN_RRUELxuSml0Q1Fg2jR0so";
+        if (apiKey == null || apiKey.isEmpty()) {
+            logger.error("Gemini API key 未配置");
+            throw new ServiceException("系统配置异常，请联系管理员", 500);
+        }
+
+        HttpURLConnection conn = null;
+        long startTime = System.currentTimeMillis();
+
+        try {
+            // 构建请求 URL
+            String urlString = String.format(
+                "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s",
+                modelName, apiKey
+            );
+
+            logger.debug("请求 URL: {}", urlString.replace(apiKey, "***"));
+
+            URL url = new URL(urlString);
+            conn = (HttpURLConnection) url.openConnection();
+
+            // 设置请求方法和头部
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(9000000);
+            conn.setReadTimeout(9000000);
+
+            // 构建请求体，指定返回 JSON 格式
+            String jsonInputString = String.format(
+                "{\"contents\": [{\"parts\": [{\"text\": \"%s\"}]}], \"generationConfig\": {\"response_mime_type\": \"application/json\"}}",
+                escapeJson(prompt)
+            );
+
+            logger.debug("请求体长度: {} bytes", jsonInputString.getBytes(StandardCharsets.UTF_8).length);
+
+            // 发送请求
+            try (OutputStream os = conn.getOutputStream()) {
+                byte[] input = jsonInputString.getBytes(StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
+            }
+
+            // 获取响应
+            int responseCode = conn.getResponseCode();
+            long requestTime = System.currentTimeMillis() - startTime;
+
+            logger.info("Gemini API 响应码: {}, 耗时: {} ms", responseCode, requestTime);
+
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                // 读取响应内容
+                StringBuilder response = new StringBuilder();
+                try (BufferedReader in = new BufferedReader(
+                    new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+                    String inputLine;
+                    while ((inputLine = in.readLine()) != null) {
+                        response.append(inputLine);
+                    }
+                }
+
+                // 解析响应 JSON，提取文本内容（应该是JSON字符串）
+                String responseBody = response.toString();
+                logger.debug("响应内容长度: {} bytes", responseBody.length());
+
+                String result = extractTextFromHttpResponse(responseBody);
+                logger.info("Gemini API 调用成功，返回JSON长度: {}", result != null ? result.length() : 0);
+
+                // 验证返回内容是否为有效JSON
+                try {
+                    objectMapper.readTree(result);
+                    logger.debug("返回内容JSON格式验证通过");
+                } catch (Exception e) {
+                    logger.warn("返回内容不是有效的JSON格式: {}", e.getMessage());
+                }
+
+                return result;
+
+            } else {
+                // 读取错误信息（仅记录到日志，不暴露给用户）
+                StringBuilder errorResponse = new StringBuilder();
+                try (BufferedReader errorReader = new BufferedReader(
+                    new InputStreamReader(conn.getErrorStream(), StandardCharsets.UTF_8))) {
+                    String inputLine;
+                    while ((inputLine = errorReader.readLine()) != null) {
+                        errorResponse.append(inputLine);
+                    }
+                }
+
+                String errorMsg = "Gemini API 返回错误码 " + responseCode + ": " + errorResponse.toString();
+                logger.error("Gemini API 调用失败: {}", errorMsg);
+                logger.error("请求详情 - 模型: {}, 提示词长度: {}, 耗时: {} ms",
+                    modelName, prompt != null ? prompt.length() : 0, requestTime);
+
+                // 抛出用户友好的异常消息
+                throw new ServiceException("JSON生成服务暂时不可用，请稍后重试", 500);
+            }
+
+        } catch (ServiceException e) {
+            // 直接抛出ServiceException，不再包装
+            throw e;
+        } catch (Exception e) {
+            long totalTime = System.currentTimeMillis() - startTime;
+
+            // 记录完整的异常堆栈信息到日志（仅供内部查看）
+            logger.error("调用 Gemini API 生成JSON发生异常，耗时: {} ms", totalTime);
+            logger.error("异常类型: {}", e.getClass().getName());
+            logger.error("异常信息: {}", e.getMessage());
+            logger.error("请求参数 - 模型: {}, 提示词长度: {}",
+                modelName, prompt != null ? prompt.length() : 0);
+
+            // 记录完整堆栈
+            StringWriter sw = new StringWriter();
+            PrintWriter pw = new PrintWriter(sw);
+            e.printStackTrace(pw);
+            logger.error("完整堆栈信息:\n{}", sw.toString());
+
+            // 抛出用户友好的异常消息（不暴露技术细节）
+            throw new ServiceException("JSON生成服务暂时不可用，请稍后重试", 500, e);
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+    }
+
+    /**
      * 流式生成内容（使用 HTTP 直接调用流式 API）
-     * 
+     *
      * @param prompt 提示词
      * @param chunkCallback 文本片段回调函数
      * @throws IllegalStateException 如果 API key 未配置

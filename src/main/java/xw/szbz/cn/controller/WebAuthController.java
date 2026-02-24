@@ -34,6 +34,7 @@ import xw.szbz.cn.repository.LifeAIResultRepository;
 import xw.szbz.cn.repository.UserSaltInfoRepository;
 import xw.szbz.cn.service.AuthService;
 import xw.szbz.cn.service.DataMaskingService;
+import xw.szbz.cn.service.GeminiService;
 import xw.szbz.cn.service.LiuRenService;
 import xw.szbz.cn.service.RandomSaltService;
 import xw.szbz.cn.util.EnhancedJwtUtil;
@@ -73,6 +74,9 @@ public class WebAuthController {
 
     @Autowired
     private UserSaltInfoRepository userSaltInfoRepository;
+
+    @Autowired
+    private GeminiService geminiService;
 
     private static final Logger logger = LoggerFactory.getLogger(WebAuthController.class);
     
@@ -154,9 +158,17 @@ public class WebAuthController {
                 logger.info("六壬预测提示词: " + prompt);
 
                 // ===== Step 8: 调用Gemini AI进行预测 =====
-                // String aiPrediction = geminiService.generateContent(prompt);
-                // logger.info("六壬预测结果: " + aiPrediction);
+                String aiPrediction = geminiService.generateContent(prompt);
+                logger.info("六壬预测结果: " + aiPrediction);
 
+                String prompt2 = promptTemplateUtil.renderLiuRenResultJsonTemplate(
+                    aiPrediction,
+                    courseInfo,
+                    request.getQuestion(),
+                    request.getBackground());
+                 // When
+                answer = geminiService.generateStructuredJson(prompt2);
+                
 
                 // 9. 构建响应
                 LifeAIResponse response = new LifeAIResponse(

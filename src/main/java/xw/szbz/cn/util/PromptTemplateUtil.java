@@ -42,6 +42,16 @@ public class PromptTemplateUtil {
         return renderTemplate("prompts/liuren_prediction_template.txt", variables);
     }
 
+    public String renderLiuRenResultJsonTemplate(String analysisText, String courseInfo, String question, String background) {
+        Map<String, String> variables = new HashMap<>();
+        variables.put("analysisText", analysisText);
+        variables.put("courseInfo", courseInfo);
+        variables.put("question", question);
+        variables.put("background", background);
+
+        return renderTemplate("prompts/liuren_result_json_template.txt", variables);
+    }
+
     /**
      * 加载八字预测提示词模板并替换变量
      *

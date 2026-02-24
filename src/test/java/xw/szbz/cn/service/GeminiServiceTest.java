@@ -245,9 +245,4 @@ class GeminiServiceTest {
         );
     }
 
-    private String courcePrompt = "";
-    private String resultPrompt = "";
-
-
-
 }

@@ -5,8 +5,8 @@ spring:
 
   # Database Configuration - SQLite
   datasource:
-    # url: jdbc:sqlite:/app/data/szbz.db
-    url: jdbc:sqlite:/Users/wang/Documents/cursor_demo/szbz/szbz/data/db/szbz.db
+    url: jdbc:sqlite:/app/data/szbz.db
+    # url: jdbc:sqlite:/Users/wang/Documents/cursor_demo/szbz/szbz/data/db/szbz.db
     driver-class-name: org.sqlite.JDBC
 
   # JPA Configuration
@@ -168,5 +168,5 @@ api:
 
 prompt:
   base:
-    path: /Users/wang/Documents/cursor_demo/szbz/szbz/templates
-    # path: /app/templates
+    # path: /Users/wang/Documents/cursor_demo/szbz/szbz/templates
+    path: /app/templates

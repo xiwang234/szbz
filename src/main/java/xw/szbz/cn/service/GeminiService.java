@@ -179,8 +179,7 @@ public class GeminiService {
      */
     public String generateContent(String prompt) {
         logger.info("开始调用 Gemini API，模型: {}, 提示词长度: {}", modelName, prompt != null ? prompt.length() : 0);
-        // apiKey = System.getenv("GEMINI_API_KEY");
-        apiKey = "AIzaSyC9lj-5rKTyN_RRUELxuSml0Q1Fg2jR0so";
+        apiKey = System.getenv("GEMINI_API_KEY");
         if (apiKey == null || apiKey.isEmpty()) {
             logger.error("key 未配置");
             throw new ServiceException("系统配置异常，请联系管理员", 500);
@@ -375,8 +374,7 @@ public class GeminiService {
      */
     public String generateStructuredJson(String prompt) {
         logger.info("开始调用 Gemini API 生成结构化JSON，模型: {}, 提示词长度: {}", modelName, prompt != null ? prompt.length() : 0);
-        // apiKey = System.getenv("GEMINI_API_KEY");
-        apiKey = "AIzaSyC9lj-5rKTyN_RRUELxuSml0Q1Fg2jR0so";
+        apiKey = System.getenv("GEMINI_API_KEY");
         if (apiKey == null || apiKey.isEmpty()) {
             logger.error("Gemini API key 未配置");
             throw new ServiceException("系统配置异常，请联系管理员", 500);

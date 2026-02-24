@@ -1,16 +1,10 @@
 package xw.szbz.cn.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-
-import java.time.LocalDateTime;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * 遥克法测试
@@ -20,8 +14,6 @@ class LiuRenYaoKeTest {
 
     @Autowired
     private LiuRenService liuRenService;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * 测试蒿矢法（上神克日干）

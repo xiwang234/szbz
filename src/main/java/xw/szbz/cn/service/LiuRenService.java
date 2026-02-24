@@ -93,11 +93,18 @@ public class LiuRenService {
                 hourPillar.getFullName(),
                 yueJiang
             );
-            result.setBasicInfo(basicInfo);
 
             // 2. 天地盘（需要传入日柱和小时来判断昼夜和贵人）
             TianDiPan tianDiPan = calculateTianDiPan(yueJiang, hourZhi, dayPillar, hour);
             result.setTianDiPan(tianDiPan);
+
+            // 计算旬空和坐空（需要在天地盘计算之后）
+            String xunKong = calculateXunKong(dayPillar.getTianGan(), dayPillar.getDiZhi());
+            String zuoKong = calculateZuoKong(xunKong, tianDiPan);
+            basicInfo.setXunKong(xunKong);
+            basicInfo.setZuoKong(zuoKong);
+
+            result.setBasicInfo(basicInfo);
 
             // 3. 四课
             SiKe siKe = calculateSiKe(dayPillar, tianDiPan);
@@ -414,14 +421,14 @@ public class LiuRenService {
 
         // 1. 判断伏吟
         if (yueJiang.equals(hourZhi)) {
-            String[] chuan = calculateFuYin(dayGan, dayZhi, isYangDay, ke1, ke4);
+            String[] chuan = calculateFuYin(dayGan, dayZhi, isYangDay, ke1, ke3);
             chuChuanZhi = chuan[0];
             zhongChuanZhi = chuan[1];
             moChuanZhi = chuan[2];
         }
         // 2. 判断反吟（天地六冲）
         else if (isReverse(yueJiang, hourZhi)) {
-            String[] chuan = calculateFanYin(dayGan, dayZhi, keInfo, ke1, ke4);
+            String[] chuan = calculateFanYin(dayGan, dayZhi, keInfo, ke1, ke3);
             chuChuanZhi = chuan[0];
             zhongChuanZhi = chuan[1];
             moChuanZhi = chuan[2];
@@ -485,7 +492,7 @@ public class LiuRenService {
         }
         // 6. 遥克法
         else if (keInfo.hasYaoKe) {
-            String[] chuan = calculateYaoKe(keInfo, isYangDay, tianDiPan);
+            String[] chuan = calculateYaoKe(dayGan, ke1, ke2, ke3, ke4, isYangDay, tianDiPan);
             chuChuanZhi = chuan[0];
             zhongChuanZhi = chuan[1];
             moChuanZhi = chuan[2];
@@ -499,7 +506,7 @@ public class LiuRenService {
         }
         // 8. 昴星法（最后的方法）
         else {
-            String[] chuan = calculateMaoXing(isYangDay, ke1, ke4, tianDiPan);
+            String[] chuan = calculateMaoXing(isYangDay, ke1, ke3, tianDiPan);
             chuChuanZhi = chuan[0];
             zhongChuanZhi = chuan[1];
             moChuanZhi = chuan[2];
@@ -782,7 +789,7 @@ public class LiuRenService {
 
     /**
      * 涉害法：多组克，且阴阳相同
-     * - 先取四孟(寅申巳亥)，无则取四仲(子午卯酉)，无则取四季(辰戌丑未)
+     * - 先以地盘四孟(寅申巳亥)上神为初传，无则取四仲(子午卯酉)，无则取四季(辰戌丑未)
      * - 多个同类时取课序靠前者
      * - 中传：取初传的本位上神
      * - 末传：取中传的本位上神
@@ -791,10 +798,11 @@ public class LiuRenService {
         String chuChuan = null;
 
         // 四孟：寅(2) 申(8) 巳(5) 亥(11)
+        // 涉害法应该检查地盘，找到后取天盘作为初传
         for (KeRelation rel : keInfo.keRelations) {
-            int zhiIndex = DiZhi.fromName(rel.keZhi).getIndex();
-            if (zhiIndex == 2 || zhiIndex == 8 || zhiIndex == 5 || zhiIndex == 11) {
-                chuChuan = rel.keZhi;
+            int diPanIndex = DiZhi.fromName(rel.diPanZhi).getIndex();
+            if (diPanIndex == 2 || diPanIndex == 8 || diPanIndex == 5 || diPanIndex == 11) {
+                chuChuan = rel.tianPanZhi; // 取地盘的上神（天盘）
                 break;
             }
         }
@@ -802,9 +810,9 @@ public class LiuRenService {
         // 四仲：子(0) 午(6) 卯(3) 酉(9)
         if (chuChuan == null) {
             for (KeRelation rel : keInfo.keRelations) {
-                int zhiIndex = DiZhi.fromName(rel.keZhi).getIndex();
-                if (zhiIndex == 0 || zhiIndex == 6 || zhiIndex == 3 || zhiIndex == 9) {
-                    chuChuan = rel.keZhi;
+                int diPanIndex = DiZhi.fromName(rel.diPanZhi).getIndex();
+                if (diPanIndex == 0 || diPanIndex == 6 || diPanIndex == 3 || diPanIndex == 9) {
+                    chuChuan = rel.tianPanZhi; // 取地盘的上神（天盘）
                     break;
                 }
             }
@@ -813,9 +821,9 @@ public class LiuRenService {
         // 四季：辰(4) 戌(10) 丑(1) 未(7)
         if (chuChuan == null) {
             for (KeRelation rel : keInfo.keRelations) {
-                int zhiIndex = DiZhi.fromName(rel.keZhi).getIndex();
-                if (zhiIndex == 4 || zhiIndex == 10 || zhiIndex == 1 || zhiIndex == 7) {
-                    chuChuan = rel.keZhi;
+                int diPanIndex = DiZhi.fromName(rel.diPanZhi).getIndex();
+                if (diPanIndex == 4 || diPanIndex == 10 || diPanIndex == 1 || diPanIndex == 7) {
+                    chuChuan = rel.tianPanZhi; // 取地盘的上神（天盘）
                     break;
                 }
             }
@@ -834,15 +842,368 @@ public class LiuRenService {
 
         return new String[]{chuChuan, zhongChuan, moChuan};
     }
-    private String[] calculateYaoKe(KeInfo keInfo, boolean isYangDay, TianDiPan tianDiPan) { return new String[]{"子", "丑", "寅"}; }
-    private String[] calculateBieZe(String dayGan, String dayZhi, boolean isYangDay, String ke1, TianDiPan tianDiPan) { return new String[]{"子", "丑", "寅"}; }
-    private String[] calculateMaoXing(boolean isYangDay, String ke1, String ke4, TianDiPan tianDiPan) { return new String[]{"子", "丑", "寅"}; }
-    private String[] calculateFuYin(String dayGan, String dayZhi, boolean isYangDay, String ke1, String ke4) { return new String[]{"子", "丑", "寅"}; }
-    private String[] calculateFanYin(String dayGan, String dayZhi, KeInfo keInfo, String ke1, String ke4) { return new String[]{"子", "丑", "寅"}; }
-    private String[] calculateBaZhuan(String ke1, boolean isYangDay) { return new String[]{"子", "丑", "寅"}; }
-    private boolean isReverse(String yueJiang, String hourZhi) { return false; }
-    private boolean isBaZhuan(String dayPillar) { return false; }
-    private boolean isSiKeBuBei(String ke1, String ke2, String ke3, String ke4) { return false; }
+    /**
+     * 遥克法：四课上下俱无相克
+     * 先取遥克日干之神作初传（蒿矢法），若无则取日干遥克之神作初传（弹射法）
+     * 若同时出现数者，则阳日用阳神、阴日用阴神
+     */
+    private String[] calculateYaoKe(String dayGan, String ke1, String ke2, String ke3, String ke4,
+                                    boolean isYangDay, TianDiPan tianDiPan) {
+        // 获取四课上神（天盘地支）
+        String shangShen1 = extractTianPanFromKe(ke1);
+        String shangShen2 = extractTianPanFromKe(ke2);
+        String shangShen3 = extractTianPanFromKe(ke3);
+        String shangShen4 = extractTianPanFromKe(ke4);
+
+        // 日干五行
+        WuXing dayGanWuXing = WuXing.fromTianGan(dayGan);
+
+        // 存储克日干的上神（蒿矢法）
+        List<String> keGanList = new ArrayList<>();
+
+        // 存储被日干克的上神（弹射法）
+        List<String> beiKeList = new ArrayList<>();
+
+        // 检查四课上神与日干的克关系
+        String[] shangShenArray = {shangShen1, shangShen2, shangShen3, shangShen4};
+        for (String shangShen : shangShenArray) {
+            WuXing shangShenWuXing = WuXing.fromDiZhi(shangShen);
+
+            // 上神克日干（蒿矢法）
+            if (isKe(shangShenWuXing, dayGanWuXing)) {
+                keGanList.add(shangShen);
+            }
+
+            // 日干克上神（弹射法）
+            if (isKe(dayGanWuXing, shangShenWuXing)) {
+                beiKeList.add(shangShen);
+            }
+        }
+
+        String chuChuan;
+
+        // 优先取蒿矢法（上神克日干）
+        if (!keGanList.isEmpty()) {
+            if (keGanList.size() == 1) {
+                chuChuan = keGanList.get(0);
+            } else {
+                // 多个时，阳日取阳神，阴日取阴神
+                chuChuan = selectByYinYang(keGanList, isYangDay);
+            }
+        }
+        // 无克日干的，取弹射法（日干克上神）
+        else if (!beiKeList.isEmpty()) {
+            if (beiKeList.size() == 1) {
+                chuChuan = beiKeList.get(0);
+            } else {
+                // 多个时，阳日取阳神，阴日取阴神
+                chuChuan = selectByYinYang(beiKeList, isYangDay);
+            }
+        }
+        // 都没有，返回默认（理论上不应该到这里）
+        else {
+            chuChuan = shangShen1;
+        }
+
+        // 中传：初传的上神
+        String zhongChuan = getTianPanByDiPan(chuChuan, tianDiPan);
+
+        // 末传：中传的上神
+        String moChuan = getTianPanByDiPan(zhongChuan, tianDiPan);
+
+        return new String[]{chuChuan, zhongChuan, moChuan};
+    }
+
+    /**
+     * 从列表中根据阴阳日选择地支
+     * 阳日取阳神，阴日取阴神
+     * 如果同时有多个符合条件的，取第一个
+     */
+    private String selectByYinYang(List<String> zhiList, boolean isYangDay) {
+        for (String zhi : zhiList) {
+            if (isYangZhi(zhi) == isYangDay) {
+                return zhi;
+            }
+        }
+        // 如果没有符合阴阳条件的，返回第一个
+        return zhiList.get(0);
+    }
+
+    /**
+     * 别责法：四课不备（有两课相同）
+     * - 五阳日取干合上神作初传
+     * - 五阴日以地支三合前辰为初传
+     * - 中末传俱归干上神
+     */
+    private String[] calculateBieZe(String dayGan, String dayZhi, boolean isYangDay, String ke1, TianDiPan tianDiPan) {
+        String chuChuan;
+
+        if (isYangDay) {
+            // 五阳日：取干合上神作初传
+            // 干合关系：甲己合、乙庚合、丙辛合、丁壬合、戊癸合
+            String heGan = getHeGan(dayGan);
+            String heZhi = getGanZhiMapping(heGan); // 合干的寄宫
+            chuChuan = getTianPanByDiPan(heZhi, tianDiPan);
+        } else {
+            // 五阴日：以地支三合前辰为初传
+            int dayZhiIndex = DiZhi.fromName(dayZhi).getIndex();
+            int sanHeQianChenIndex = getSanHeQianChen(dayZhiIndex);
+            chuChuan = DiZhi.fromIndex(sanHeQianChenIndex).getName();
+        }
+
+        // 中传和末传：俱归干上神
+        String ganShangShen = extractTianPanFromKe(ke1); // 第一课的天盘就是干上神
+        String zhongChuan = ganShangShen;
+        String moChuan = ganShangShen;
+
+        return new String[]{chuChuan, zhongChuan, moChuan};
+    }
+
+    /**
+     * 昴星法：四课上下无相克又无遥克
+     * 刚日（阳日）：以地盘酉宫上神作初传，中传取支上神，末传取干上神
+     * 柔日（阴日）：以天盘酉宫下神作初传，中传取干上神，末传取支上神
+     */
+    private String[] calculateMaoXing(boolean isYangDay, String ke1, String ke3, TianDiPan tianDiPan) {
+        // 酉宫索引为9
+        int youIndex = 9;
+        PanPosition youPosition = tianDiPan.getPositions()[youIndex];
+
+        String chuChuan;
+        String zhongChuan;
+        String moChuan;
+
+        if (isYangDay) {
+            // 阳日：酉宫上神（天盘）为初传
+            chuChuan = youPosition.getTianPan();
+            // 中传：支上神（第三课天盘）
+            zhongChuan = extractTianPanFromKe(ke3);
+            // 末传：干上神（第一课天盘）
+            moChuan = extractTianPanFromKe(ke1);
+        } else {
+            // 阴日：酉宫下神（地盘）为初传
+            chuChuan = youPosition.getDiPan();
+            // 中传：干上神（第一课天盘）
+            zhongChuan = extractTianPanFromKe(ke1);
+            // 末传：支上神（第三课天盘）
+            moChuan = extractTianPanFromKe(ke3);
+        }
+
+        return new String[]{chuChuan, zhongChuan, moChuan};
+    }
+
+    /**
+     * 伏吟法：月将占时相同，天盘合于地盘本位
+     * 阳日：以干上为初传，初传所刑为中传，中传所刑为末传
+     * 阴日：以支上为初传，初传所刑为中传，中传所刑为末传
+     * 乙、癸二日有干上克则取干上为初传
+     */
+    private String[] calculateFuYin(String dayGan, String dayZhi, boolean isYangDay, String ke1, String ke3) {
+        String chuChuan;
+
+        // 乙、癸二日伏吟有干上克，则取干上为初传
+        boolean hasGanShangKe = dayGan.equals("乙") || dayGan.equals("癸");
+
+        if (isYangDay || hasGanShangKe) {
+            // 阳日或乙癸日：以干上为初传（第一课天盘）
+            chuChuan = extractTianPanFromKe(ke1);
+        } else {
+            // 阴日：以支上为初传（第三课天盘）
+            chuChuan = extractTianPanFromKe(ke3);
+        }
+
+        // 计算中传：初传所刑
+        String zhongChuan = getXing(chuChuan);
+
+        // 如果初传自刑，中传取另一个（阳日取支上，阴日取干上）
+        if (zhongChuan.equals(chuChuan)) {
+            if (isYangDay || hasGanShangKe) {
+                // 取支上
+                zhongChuan = extractTianPanFromKe(ke3);
+            } else {
+                // 取干上
+                zhongChuan = extractTianPanFromKe(ke1);
+            }
+        }
+
+        // 计算末传：中传所刑
+        String moChuan = getXing(zhongChuan);
+
+        // 如果中传自刑，末传取中传所冲
+        if (moChuan.equals(zhongChuan)) {
+            moChuan = getChong(zhongChuan);
+        }
+
+        // 如果末传又回到初传（如卯刑子，子刑卯），取冲
+        if (moChuan.equals(chuChuan)) {
+            moChuan = getChong(zhongChuan);
+        }
+
+        return new String[]{chuChuan, zhongChuan, moChuan};
+    }
+
+    /**
+     * 反吟法：天地六冲
+     * 反吟法四课上下大多有克处，以元首、重审、比用诸法取传
+     * 只有辛未、丁未、己未、丁丑、己丑、辛丑六日反吟无克
+     * 这六日取日辰马星作初传，支上神为中传，末传取干上神
+     */
+    private String[] calculateFanYin(String dayGan, String dayZhi, KeInfo keInfo, String ke1, String ke3) {
+        // 判断是否是无克的六日
+        boolean isWuKeDay = (dayGan.equals("辛") && dayZhi.equals("未")) ||
+                           (dayGan.equals("丁") && dayZhi.equals("未")) ||
+                           (dayGan.equals("己") && dayZhi.equals("未")) ||
+                           (dayGan.equals("丁") && dayZhi.equals("丑")) ||
+                           (dayGan.equals("己") && dayZhi.equals("丑")) ||
+                           (dayGan.equals("辛") && dayZhi.equals("丑"));
+
+        if (isWuKeDay) {
+            // 无克六日：取日辰马星作初传
+            int dayZhiIndex = DiZhi.fromName(dayZhi).getIndex();
+            int maXingIndex = getYiMa(dayZhiIndex);
+            String chuChuan = DiZhi.fromIndex(maXingIndex).getName();
+
+            // 支上神为中传（第三课天盘）
+            String zhongChuan = extractTianPanFromKe(ke3);
+
+            // 干上神为末传（第一课天盘）
+            String moChuan = extractTianPanFromKe(ke1);
+
+            return new String[]{chuChuan, zhongChuan, moChuan};
+        } else {
+            // 有克的情况，应该在前面的克法中已经处理了
+            // 这里返回占位值，实际不应该走到这里
+            return new String[]{"子", "丑", "寅"};
+        }
+    }
+
+    /**
+     * 八专法：甲寅、庚申、丁未、己未四日，上下无克
+     * 阳日：以干上神前三位字作初传，中末传俱取干上神
+     * 阴日：以四课上神后三位字作初传，中末传俱取干上神
+     */
+    private String[] calculateBaZhuan(String ke1, boolean isYangDay) {
+        // 干上神（第一课天盘）
+        String ganShangShen = extractTianPanFromKe(ke1);
+        int ganShangShenIndex = DiZhi.fromName(ganShangShen).getIndex();
+
+        String chuChuan;
+        if (isYangDay) {
+            // 阳日：干上神顺数三位
+            int chuChuanIndex = (ganShangShenIndex + 3) % 12;
+            chuChuan = DiZhi.fromIndex(chuChuanIndex).getName();
+        } else {
+            // 阴日：干上神逆数三位
+            int chuChuanIndex = (ganShangShenIndex - 3 + 12) % 12;
+            chuChuan = DiZhi.fromIndex(chuChuanIndex).getName();
+        }
+
+        // 中末传都是干上神
+        String zhongChuan = ganShangShen;
+        String moChuan = ganShangShen;
+
+        return new String[]{chuChuan, zhongChuan, moChuan};
+    }
+
+    /**
+     * 判断是否反吟（天地六冲）
+     * 月将和占时相冲
+     */
+    private boolean isReverse(String yueJiang, String hourZhi) {
+        return getChong(yueJiang).equals(hourZhi);
+    }
+
+    /**
+     * 判断是否八专
+     * 甲寅、庚申、丁未、己未四日
+     */
+    private boolean isBaZhuan(String dayPillar) {
+        return dayPillar.equals("甲寅") ||
+               dayPillar.equals("庚申") ||
+               dayPillar.equals("丁未") ||
+               dayPillar.equals("己未");
+    }
+
+    /**
+     * 判断四课不备（四课中有两课相同）
+     * 比较四课的天盘地支，如果有两课的天盘地支相同，则为四课不备
+     */
+    private boolean isSiKeBuBei(String ke1, String ke2, String ke3, String ke4) {
+        // 提取四课的天盘地支
+        String tian1 = extractTianPanFromKe(ke1);
+        String tian2 = extractTianPanFromKe(ke2);
+        String tian3 = extractTianPanFromKe(ke3);
+        String tian4 = extractTianPanFromKe(ke4);
+
+        // 检查是否有重复
+        if (tian1.equals(tian2) || tian1.equals(tian3) || tian1.equals(tian4)) {
+            return true;
+        }
+        if (tian2.equals(tian3) || tian2.equals(tian4)) {
+            return true;
+        }
+        if (tian3.equals(tian4)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * 获取干的合
+     * 甲己合、乙庚合、丙辛合、丁壬合、戊癸合
+     */
+    private String getHeGan(String gan) {
+        switch (gan) {
+            case "甲": return "己";
+            case "乙": return "庚";
+            case "丙": return "辛";
+            case "丁": return "壬";
+            case "戊": return "癸";
+            case "己": return "甲";
+            case "庚": return "乙";
+            case "辛": return "丙";
+            case "壬": return "丁";
+            case "癸": return "戊";
+            default: return "甲";
+        }
+    }
+
+    /**
+     * 获取地支的刑
+     * 寅刑巳、巳刑申、申刑寅
+     * 丑刑戌、戌刑未、未刑丑
+     * 子刑卯、卯刑子
+     * 辰午酉亥自刑
+     */
+    private String getXing(String zhi) {
+        switch (zhi) {
+            case "寅": return "巳";
+            case "巳": return "申";
+            case "申": return "寅";
+            case "丑": return "戌";
+            case "戌": return "未";
+            case "未": return "丑";
+            case "子": return "卯";
+            case "卯": return "子";
+            // 自刑
+            case "辰": return "辰";
+            case "午": return "午";
+            case "酉": return "酉";
+            case "亥": return "亥";
+            default: return zhi;
+        }
+    }
+
+    /**
+     * 获取地支的冲
+     * 子午冲、丑未冲、寅申冲、卯酉冲、辰戌冲、巳亥冲
+     */
+    private String getChong(String zhi) {
+        int zhiIndex = DiZhi.fromName(zhi).getIndex();
+        int chongIndex = (zhiIndex + 6) % 12;
+        return DiZhi.fromIndex(chongIndex).getName();
+    }
 
     /**
      * 为地支配上天干（根据日柱所在旬配置）
@@ -1852,5 +2213,63 @@ public class LiuRenService {
             case 2:  return 9;  // 甲寅旬 → 辛酉
         }
         return -1;
+    }
+
+    /**
+     * 计算旬空
+     * 根据日柱所在的旬计算旬空的两个地支
+     *
+     * @param dayGan 日干
+     * @param dayZhi 日支
+     * @return 旬空两个地支，如"辰巳"
+     */
+    private String calculateXunKong(String dayGan, String dayZhi) {
+        int dayGanIndex = TianGan.fromName(dayGan).getIndex();
+        int dayZhiIndex = DiZhi.fromName(dayZhi).getIndex();
+
+        // 计算旬首
+        int xunShouIndex = getXunShou(dayGanIndex, dayZhiIndex);
+
+        // 旬空地支 = (旬首 - 2 + 12) % 12 和 (旬首 - 1 + 12) % 12
+        int xunKong1Index = (xunShouIndex - 2 + 12) % 12;
+        int xunKong2Index = (xunShouIndex - 1 + 12) % 12;
+
+        String xunKong1 = DiZhi.fromIndex(xunKong1Index).getName();
+        String xunKong2 = DiZhi.fromIndex(xunKong2Index).getName();
+
+        return xunKong1 + xunKong2;
+    }
+
+    /**
+     * 计算坐空
+     * 在天地盘中，地盘为旬空的位置上的天盘地支
+     *
+     * @param xunKong 旬空（如"辰巳"）
+     * @param tianDiPan 天地盘
+     * @return 坐空的天盘地支，如"子丑"
+     */
+    private String calculateZuoKong(String xunKong, TianDiPan tianDiPan) {
+        if (xunKong == null || xunKong.length() != 2) {
+            return "";
+        }
+
+        String xunKong1 = xunKong.substring(0, 1);
+        String xunKong2 = xunKong.substring(1, 2);
+
+        StringBuilder zuoKong = new StringBuilder();
+
+        // 遍历天地盘，找地盘为旬空的位置
+        for (int i = 0; i < 12; i++) {
+            PanPosition position = tianDiPan.getPositions()[i];
+            if (position != null) {
+                String diPan = position.getDiPan();
+                if (diPan.equals(xunKong1) || diPan.equals(xunKong2)) {
+                    // 地盘是旬空，取天盘
+                    zuoKong.append(position.getTianPan());
+                }
+            }
+        }
+
+        return zuoKong.toString();
     }
 }

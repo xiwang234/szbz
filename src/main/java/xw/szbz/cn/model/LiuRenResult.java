@@ -51,6 +51,8 @@ public class LiuRenResult {
         private String dayPillar;
         private String hourPillar;
         private String yueJiang;
+        private String xunKong;     // 旬空（两个地支，如"辰巳"）
+        private String zuoKong;     // 坐空（天盘地支，如"子丑"）
 
         public BasicInfo() {}
 
@@ -109,6 +111,22 @@ public class LiuRenResult {
 
         public void setYueJiang(String yueJiang) {
             this.yueJiang = yueJiang;
+        }
+
+        public String getXunKong() {
+            return xunKong;
+        }
+
+        public void setXunKong(String xunKong) {
+            this.xunKong = xunKong;
+        }
+
+        public String getZuoKong() {
+            return zuoKong;
+        }
+
+        public void setZuoKong(String zuoKong) {
+            this.zuoKong = zuoKong;
         }
     }
 

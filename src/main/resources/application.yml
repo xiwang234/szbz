@@ -5,7 +5,8 @@ spring:
 
   # Database Configuration - SQLite
   datasource:
-    url: jdbc:sqlite:/app/data/szbz.db
+    # url: jdbc:sqlite:/app/data/szbz.db
+    url: jdbc:sqlite:/Users/wang/Documents/cursor_demo/szbz/szbz/data/db/szbz.db
     driver-class-name: org.sqlite.JDBC
 
   # JPA Configuration
@@ -164,3 +165,8 @@ api:
   sign:
     secret: ${API_SIGN_SECRET:szbz-api-sign-key-2026}
     expiration: 300000  # 5 minutes in milliseconds
+
+prompt:
+  base:
+    path: /Users/wang/Documents/cursor_demo/szbz/szbz/templates
+    # path: /app/templates

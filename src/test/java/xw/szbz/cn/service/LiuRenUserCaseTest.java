@@ -34,8 +34,10 @@ class LiuRenUserCaseTest {
         // LocalDateTime dateTime = LocalDateTime.of(2025, 9, 17, 17, 9);
         // LocalDateTime dateTime = LocalDateTime.of(2026, 2, 21, 19, 16);
         // LocalDateTime dateTime = LocalDateTime.of(2023, 4, 11, 11, 5);
-        LocalDateTime dateTime = LocalDateTime.of(2026, 6, 21, 21, 43);
-        
+        // LocalDateTime dateTime = LocalDateTime.of(2026, 6, 21, 21, 43);
+        // LocalDateTime dateTime = LocalDateTime.of(2025, 11, 26, 12, 44);
+        LocalDateTime dateTime = LocalDateTime.of(2026, 2, 23, 20, 45);
+
         String result = liuRenService.generateCourseInfo(dateTime);
         JsonNode jsonNode = objectMapper.readTree(result);
 

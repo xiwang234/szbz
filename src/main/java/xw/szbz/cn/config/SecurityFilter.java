@@ -57,7 +57,7 @@ public class SecurityFilter implements Filter {
     @Value("${security.ip.rate.limit:60}")
     private int ipRateLimit; // 每分钟最多请求次数
 
-    @Value("${security.ip.block.threshold:5}")
+    @Value("${security.ip.block.threshold:500}")
     private int blockThreshold; // 累计拦截多少次后封禁
 
     // 恶意路径关键词黑名单（常见的漏洞扫描路径）

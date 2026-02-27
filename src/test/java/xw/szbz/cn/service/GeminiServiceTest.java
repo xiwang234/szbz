@@ -47,7 +47,7 @@ class GeminiServiceTest {
 
         String prompt2 = promptTemplateUtil.renderLiuRenResultJsonTemplate(result,courseInfo,
             "问病情如何？",
-            "一位七旬老人（女性），晚上送医院ICU急救，明天手术。有心脏病史。");
+            "一位七旬老人（女性），晚上送医院ICU急救，明天手术。有心脏病史。","cn");
          // When
         String result2 = geminiService.generateStructuredJson(prompt2);
         

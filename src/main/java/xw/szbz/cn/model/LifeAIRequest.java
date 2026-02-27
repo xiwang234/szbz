@@ -10,6 +10,7 @@ public class LifeAIRequest {
     private Integer birthYear;      // 出生年份
     private String gender;          // 性别（男/女/male/female）
     private String category;        // 分类
+    private String language;        // 语言标识（en/cn）
 
     public LifeAIRequest() {
     }
@@ -62,6 +63,14 @@ public class LifeAIRequest {
         this.category = category;
     }
 
+    public String getLanguage() {
+        return language;
+    }
+
+    public void setLanguage(String language) {
+        this.language = language;
+    }
+
     @Override
     public String toString() {
         return "LifeAIRequest{" +
@@ -70,6 +79,7 @@ public class LifeAIRequest {
                 ", birthYear=" + birthYear +
                 ", gender='" + gender + '\'' +
                 ", category='" + category + '\'' +
+                ", language='" + language + '\'' +
                 '}';
     }
 }

@@ -42,14 +42,33 @@ public class PromptTemplateUtil {
         return renderTemplate("prompts/liuren_prediction_template.txt", variables);
     }
 
-    public String renderLiuRenResultJsonTemplate(String analysisText, String courseInfo, String question, String background) {
+    /**
+     * 加载六壬结果JSON提示词模板并替换变量（支持多语言）
+     *
+     * @param analysisText 分析文本
+     * @param courseInfo 课传信息
+     * @param question 占问事项
+     * @param background 占问背景
+     * @param language 语言标识（en/cn）
+     * @return 渲染后的提示词
+     */
+    public String renderLiuRenResultJsonTemplate(String analysisText, String courseInfo, String question, String background, String language) {
         Map<String, String> variables = new HashMap<>();
         variables.put("analysisText", analysisText);
         variables.put("courseInfo", courseInfo);
         variables.put("question", question);
         variables.put("background", background);
 
-        return renderTemplate("prompts/liuren_result_json_template.txt", variables);
+        // 根据语言选择不同的模板文件
+        String templatePath;
+        if ("en".equalsIgnoreCase(language)) {
+            templatePath = "prompts/liuren_result_json_template_en.txt";
+        } else {
+            // 默认使用中文模板（cn或其他值）
+            templatePath = "prompts/liuren_result_json_template.txt";
+        }
+
+        return renderTemplate(templatePath, variables);
     }
 
     /**

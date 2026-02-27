@@ -131,7 +131,7 @@ public class WebAuthController {
                 // 5. TODO: 业务逻辑待定
                 // 这里将来会调用 AI 服务进行处理
                 String requestId = java.util.UUID.randomUUID().toString();
-                String answer = "业务逻辑待实现"; // 占位符
+                String answer = "no analysis"; // 占位符
 
 
 
@@ -161,14 +161,25 @@ public class WebAuthController {
                 String aiPrediction = geminiService.generateContent(prompt);
                 logger.info("六壬预测结果: " + aiPrediction);
 
+                // ===== Step 9: 生成量化数据（支持多语言）=====
+                // 获取语言参数，默认为中文
+                String language = request.getLanguage();
+                if (language == null || language.isEmpty()) {
+                    language = "cn"; // 默认中文
+                }
+                logger.info("使用语言: {}", language);
+
                 String prompt2 = promptTemplateUtil.renderLiuRenResultJsonTemplate(
                     aiPrediction,
                     courseInfo,
                     request.getQuestion(),
-                    request.getBackground());
+                    request.getBackground(),
+                    language);
+                logger.info("六壬量化prompt: " + prompt2);
                  // When
                 answer = geminiService.generateStructuredJson(prompt2);
-                
+                logger.info("六壬量化结果: " + answer);
+
 
                 // 9. 构建响应
                 LifeAIResponse response = new LifeAIResponse(
@@ -650,6 +661,81 @@ public class WebAuthController {
 
         } catch (Exception e) {
             logger.error("查询免费次数失败", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error("查询失败：" + e.getMessage()));
+        }
+    }
+
+    /**
+     * 获取历史咨询详情
+     * GET /api/web-auth/detail
+     *
+     * @param id 历史记录ID（来自history接口返回的列表）
+     * @return 返回该记录的result字段数据
+     */
+    @GetMapping("/detail")
+    public ResponseEntity<ApiResponse<String>> getDetail(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam Long id) {
+
+        try {
+            // 1. 参数验证
+            if (id == null || id <= 0) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(ApiResponse.error("记录ID不能为空且必须大于0"));
+            }
+
+            // 2. 从 JWT Token 中获取用户信息
+            String token = extractToken(authHeader);
+            String encryptedUserId = jwtUtil.getEncryptedUserIdFromToken(token);
+
+            logger.info("查询历史详情，encryptedUserId: {}, recordId: {}", encryptedUserId, id);
+
+            // 3. 获取用户详细信息并检查状态
+            WebUser user;
+            try {
+                user = authService.getUserByEncryptedId(encryptedUserId);
+            } catch (Exception e) {
+                logger.error("获取用户信息失败, encryptedUserId: {}", encryptedUserId, e);
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("用户信息获取失败"));
+            }
+
+            // 4. 检查用户账户状态
+            if (!user.getActive()) {
+                logger.warn("用户账户已被禁用, userId: {}", encryptedUserId);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("账户已被禁用"));
+            }
+
+            // 5. 根据ID查询记录
+            java.util.Optional<LifeAIResult> resultOpt = lifeAIResultRepository.findById(id);
+
+            if (!resultOpt.isPresent()) {
+                logger.warn("记录不存在, recordId: {}", id);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(ApiResponse.error("记录不存在"));
+            }
+
+            LifeAIResult lifeAIResult = resultOpt.get();
+
+            // 6. 验证记录所属用户（确保只能查看自己的记录）
+            if (!lifeAIResult.getUserId().equals(user.getId())) {
+                logger.warn("用户尝试访问他人记录, userId: {}, recordUserId: {}, recordId: {}",
+                    user.getId(), lifeAIResult.getUserId(), id);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("无权访问该记录"));
+            }
+
+            // 7. 返回result字段数据
+            String result = lifeAIResult.getResult();
+            logger.info("成功获取历史详情, userId: {}, recordId: {}, resultLength: {}",
+                user.getId(), id, result != null ? result.length() : 0);
+
+            return ResponseEntity.ok(ApiResponse.success(result, "查询成功"));
+
+        } catch (Exception e) {
+            logger.error("查询历史详情失败, recordId: {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error("查询失败：" + e.getMessage()));
         }

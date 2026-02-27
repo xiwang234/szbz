@@ -5,8 +5,8 @@ spring:
 
   # Database Configuration - SQLite
   datasource:
-    url: jdbc:sqlite:/app/data/szbz.db
-    # url: jdbc:sqlite:/Users/wang/Documents/cursor_demo/szbz/szbz/data/db/szbz.db
+    # url: jdbc:sqlite:/app/data/szbz.db
+    url: jdbc:sqlite:/Users/wang/Documents/cursor_demo/szbz/szbz/data/db/szbz.db
     driver-class-name: org.sqlite.JDBC
 
   # JPA Configuration
@@ -131,9 +131,9 @@ rate:
 security:
   ip:
     rate:
-      limit: 10  # requests per minute per IP
+      limit: 60  # requests per minute per IP
     block:
-      threshold: 5  # block after N violations
+      threshold: 500  # block after N violations
 
 # Stripe Configuration
 stripe:
@@ -168,5 +168,5 @@ api:
 
 prompt:
   base:
-    # path: /Users/wang/Documents/cursor_demo/szbz/szbz/templates
-    path: /app/templates
+    path: /Users/wang/Documents/cursor_demo/szbz/szbz/templates
+    # path: /app/templates

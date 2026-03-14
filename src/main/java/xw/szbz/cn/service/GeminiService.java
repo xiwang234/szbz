@@ -181,7 +181,6 @@ public class GeminiService {
     public String generateContent(String prompt) {
         logger.info("开始调用 Gemini API，模型: {}, 提示词长度: {}", modelName, prompt != null ? prompt.length() : 0);
         apiKey = System.getenv("GEMINI_API_KEY");
-
         if (apiKey == null || apiKey.isEmpty()) {
             logger.error("key 未配置");
             throw new ServiceException("系统配置异常，请联系管理员", 500);
@@ -510,7 +509,7 @@ public class GeminiService {
      */
     public void generateContentStream(String prompt, java.util.function.Consumer<String> chunkCallback) {
         logger.info("开始流式调用 Gemini API，模型: {}, 提示词长度: {}", modelName, prompt != null ? prompt.length() : 0);
-
+        apiKey = System.getenv("GEMINI_API_KEY");
         if (apiKey == null || apiKey.isEmpty()) {
             logger.error("Gemini API key 未配置");
             throw new ServiceException("系统配置异常，请联系管理员", 500);

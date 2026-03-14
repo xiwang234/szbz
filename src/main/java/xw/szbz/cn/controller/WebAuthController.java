@@ -462,61 +462,6 @@ public class WebAuthController {
     }
     
     /**
-     * 请求密码重置
-     * POST /api/web-auth/request-reset
-     */
-    @PostMapping("/request-reset")
-    public ResponseEntity<ApiResponse<String>> requestPasswordReset(
-            @RequestBody PasswordResetRequest request) {
-        
-        try {
-            authService.requestPasswordReset(request.getEmail());
-            return ResponseEntity.ok(ApiResponse.success(
-                "如果该邮箱存在，我们已发送重置链接", null
-            ));
-        } catch (Exception e) {
-            // 为了安全，不透露用户是否存在
-            return ResponseEntity.ok(ApiResponse.success(
-                "如果该邮箱存在，我们已发送重置链接", null
-            ));
-        }
-    }
-    
-    /**
-     * 重置密码
-     * POST /api/web-auth/reset-password
-     */
-    @PostMapping("/reset-password")
-    public ResponseEntity<ApiResponse<String>> resetPassword(
-            @RequestBody ResetPasswordRequest request) {
-        
-        try {
-            authService.resetPassword(request.getToken(), request.getNewPassword());
-            return ResponseEntity.ok(ApiResponse.success("密码重置成功", null));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(e.getMessage()));
-        }
-    }
-    
-    /**
-     * 验证邮箱
-     * POST /api/web-auth/verify-email
-     */
-    @PostMapping("/verify-email")
-    public ResponseEntity<ApiResponse<String>> verifyEmail(
-            @RequestParam String token) {
-
-        try {
-            authService.verifyEmail(token);
-            return ResponseEntity.ok(ApiResponse.success("邮箱验证成功", null));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(e.getMessage()));
-        }
-    }
-
-    /**
      * 获取用户的 LifeAI 咨询历史（支持分页和类型过滤）
      * GET /api/web-auth/history
      *
@@ -794,8 +739,66 @@ public class WebAuthController {
         }
     }
 
+    // ========== 密码重置相关接口 ==========
+
+    /**
+     * 接口A：请求密码重置，发送重置邮件
+     * POST /api/web-auth/request-reset
+     */
+    @PostMapping("/request-reset")
+    public ResponseEntity<ApiResponse<String>> requestPasswordReset(
+            @RequestBody PasswordResetRequest request) {
+        try {
+            authService.requestPasswordReset(request.getEmail());
+            return ResponseEntity.ok(ApiResponse.success(
+                "如果该邮箱已注册，重置链接已发送，请在5分钟内完成重置", null
+            ));
+        } catch (xw.szbz.cn.exception.ServiceException e) {
+            // 限流等业务异常直接返回错误信息
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            // 其他异常（如邮箱不存在）统一返回成功提示，不透露信息
+            return ResponseEntity.ok(ApiResponse.success(
+                "如果该邮箱已注册，重置链接已发送，请在5分钟内完成重置", null
+            ));
+        }
+    }
+
+    /**
+     * 接口B：验证重置 Token 有效性
+     * GET /api/web-auth/verify-reset-token
+     */
+    @GetMapping("/verify-reset-token")
+    public ResponseEntity<ApiResponse<String>> verifyResetToken(
+            @RequestParam String token) {
+        try {
+            authService.verifyResetToken(token);
+            return ResponseEntity.ok(ApiResponse.success("", "token有效"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
+     * 接口C：重置密码
+     * POST /api/web-auth/reset-password
+     */
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<String>> resetPassword(
+            @RequestBody ResetPasswordRequest request) {
+        try {
+            authService.resetPassword(request.getToken(), request.getNewPassword());
+            return ResponseEntity.ok(ApiResponse.success("密码重置成功", null));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
     // ========== 私有辅助方法 ==========
-    
+
     /**
      * 从请求中获取客户端IP地址
      */

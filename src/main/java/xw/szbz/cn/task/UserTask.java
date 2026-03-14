@@ -37,7 +37,7 @@ public class UserTask {
      * cron expression: 0 0 0/3 * * ?
      * runs at: 0:00, 3:00, 6:00, 9:00, 12:00, 15:00, 18:00, 21:00
      */
-    @Scheduled(cron = "0 0 0/3 * * ?")
+    @Scheduled(cron = "0 0 18 * * ?")
     public void sendUserStatisticsEmail() {
         logger.info("Start scheduled task: send user statistics email");
 
@@ -50,15 +50,23 @@ public class UserTask {
 
             // 3. Build email content
             String emailContent = buildEmailContent(totalUserCount, activeUsers);
-
+            //已使用次数
+            int activeCount = buildActiveCount(activeUsers);
             // 4. Send email
-            emailService.sendHtmlEmail(recipient, "lifeai用户信息", emailContent);
+            emailService.sendHtmlEmail(recipient, "lifeai用户" + totalUserCount + "个,已使用" + activeCount + "次", emailContent);
 
         } catch (Exception e) {
             logger.error("Scheduled task failed", e);
         }
     }
-
+    private int buildActiveCount(List<UserFreeCountDto> activeUsers) {
+        int freeCount = 0;
+        int allCount = activeUsers.size() * 5;
+        for (UserFreeCountDto user : activeUsers) {
+            freeCount += user.getFreeCount();
+        }
+        return allCount - freeCount;
+    }
     /**
      * Build HTML email content
      */

@@ -42,8 +42,8 @@ public class SecurityConfig {
                     "/api/web-auth/login",
                     "/api/web-auth/random-salt",
                     "/api/web-auth/request-reset",
+                    "/api/web-auth/verify-reset-token",
                     "/api/web-auth/reset-password",
-                    "/api/web-auth/verify-email",
 
                     // 八字相关接口（公开）
                     "/api/bazi/**",

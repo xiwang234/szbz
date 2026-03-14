@@ -2,13 +2,6 @@
 spring:
   application:
     name: szbzApi
-
-  # Database Configuration - SQLite
-  datasource:
-    # url: jdbc:sqlite:/app/data/szbz.db
-    url: jdbc:sqlite:/Users/wang/Documents/cursor_demo/szbz/szbz/data/db/szbz.db
-    driver-class-name: org.sqlite.JDBC
-
   # JPA Configuration
   jpa:
     database-platform: org.hibernate.community.dialect.SQLiteDialect
@@ -33,13 +26,24 @@ spring:
             optimizer: none
         schema_update:
           auto_create_foreign_keys: false
+  # Database Configuration - SQLite
+  datasource:
+    url: jdbc:sqlite:/app/data/szbz.db
+    # url: jdbc:sqlite:/Users/wang/Documents/cursor_demo/szbz/szbz/data/db/szbz.db
+    driver-class-name: org.sqlite.JDBC
+    
+prompt:
+  base:
+    # path: /Users/wang/Documents/cursor_demo/szbz/szbz/templates
+    path: /app/templates
+
 
   # Email Configuration - 163 Mail
   mail:
-    host: smtp.163.com
-    port: 465
-    username: txw250@163.com
-    password: ACasgm4Dk3Pw7YpH
+    host: smtp.gmail.com
+    port: 587
+    username: ${GMAIL_USERNAME:main.lifeai@gmail.com}
+    password: ${GMAIL_APP_PASSWORD}
     default-encoding: UTF-8
     properties:
       mail:
@@ -50,6 +54,9 @@ spring:
             required: true
           ssl:
             enable: true
+          # proxy:
+          #   host: 127.0.0.1
+          #   port: 10808 
 
 # Server Configuration
 server:
@@ -68,14 +75,7 @@ logging:
 
 # Gemini API Configuration
 gemini:
-  api:
-    key: AIzaSyAOexD_9JQNMMSKX698GjKXlU-pVBKo-mA
-    # Alternative: Use environment variable
-    # key: ${GEMINI_API_KEY}
   model: gemini-2.5-flash
-  # Available models:
-  # - gemini-pro (recommended, stable)
-  # - gemini-2.0-flash-exp (experimental)
 
 # WeChat MiniProgram Configuration
 wechat:
@@ -110,7 +110,6 @@ field:
 email:
   scheduled:
     recipient: txw250@163.com
-    sender: txw250@163.com
 
 # Business Log Configuration
 business:
@@ -126,6 +125,8 @@ rate:
       daily: 5
     jitu:
       daily: 5
+    password-reset:
+      daily: 3
 
 # Security Configuration
 security:
@@ -159,6 +160,13 @@ cache:
 password:
   fixed:
     salt: ${PASSWORD_FIXED_SALT:szbz-fixed-salt-2024-secure-password}
+  reset:
+    secret: ${PASSWORD_RESET_SECRET}
+
+# App Base URL (used in reset email link)
+app:
+  base-url: ${APP_BASE_URL:https://lifeai.wang}
+  # base-url: ${APP_BASE_URL:http://localhost:3000}
 
 # API Sign Configuration
 api:
@@ -166,7 +174,3 @@ api:
     secret: ${API_SIGN_SECRET:szbz-api-sign-key-2026}
     expiration: 300000  # 5 minutes in milliseconds
 
-prompt:
-  base:
-    path: /Users/wang/Documents/cursor_demo/szbz/szbz/templates
-    # path: /app/templates

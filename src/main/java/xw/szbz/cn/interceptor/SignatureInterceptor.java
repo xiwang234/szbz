@@ -144,6 +144,9 @@ public class SignatureInterceptor implements HandlerInterceptor {
         if ("/api/web-auth/random-salt".equals(requestUri)) {
             return true;
         }
+        if ("/api/web-auth/verify-reset-token".equals(requestUri)) {
+            return true;
+        }
         // 排除 /api/bazi/* 的所有接口
         if (requestUri.startsWith("/api/bazi/")) {
             return true;
